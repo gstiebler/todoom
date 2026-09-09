@@ -108,6 +108,12 @@ function waitFor(check: () => boolean, what: string): Promise<void> {
   })
 }
 
+// Drive query strings are single-quoted; escape backslashes and quotes so a
+// filename can never terminate the literal and inject clauses.
+function quoteForQuery(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+}
+
 export class GoogleDriveStore implements TodoStore {
   private token: string | null = null
   private tokenClient: GoogleTokenClient | null = null
@@ -215,7 +221,11 @@ export class GoogleDriveStore implements TodoStore {
 
   async findOrCreateSibling(ref: FileRef, name: string): Promise<FileRef> {
     const parent = await this.parentOf(ref)
-    const query = [`name = '${name}'`, 'trashed = false', parent ? `'${parent}' in parents` : null]
+    const query = [
+      `name = '${quoteForQuery(name)}'`,
+      'trashed = false',
+      parent ? `'${quoteForQuery(parent)}' in parents` : null,
+    ]
       .filter((clause): clause is string => clause !== null)
       .join(' and ')
     const response = await this.request(

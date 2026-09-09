@@ -3,7 +3,8 @@ import { TodoomApp } from './app/state'
 import { GoogleDriveStore } from './drive/googleStore'
 import type { FileRef, TodoStore } from './drive/store'
 import { render } from './ui/render'
-import { filterFromQuery, filterToQuery } from './app/urlState'
+import { filterFromQuery } from './app/urlState'
+import { syncFilterHistory } from './app/urlHistory'
 import { clearFileRef, createDebouncedSaver, loadFileRef, saveFileRef } from './app/session'
 
 const root = document.querySelector<HTMLDivElement>('#app')
@@ -38,11 +39,11 @@ function start(store: TodoStore, ref: FileRef): void {
   const saver = createDebouncedSaver(app, 2000)
 
   app.setFilter(filterFromQuery(window.location.search))
+  let lastSyncedFilter = app.state.filter
 
   const syncUrl = () => {
-    const query = filterToQuery(app.state.filter)
-    const url = query ? `${window.location.pathname}?${query}` : window.location.pathname
-    window.history.replaceState(null, '', url)
+    syncFilterHistory(lastSyncedFilter, app.state.filter)
+    lastSyncedFilter = app.state.filter
   }
 
   const draw = () => {
@@ -126,7 +127,9 @@ function main(): void {
   try {
     store = new GoogleDriveStore()
   } catch (error) {
-    showSignIn(error instanceof Error ? error.message : String(error), [])
+    showSignIn(error instanceof Error ? error.message : String(error), [
+      ['Reload', () => window.location.reload()],
+    ])
     return
   }
 

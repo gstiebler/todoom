@@ -8,6 +8,7 @@ export default defineConfig({
     environmentMatchGlobs: [
       ['src/ui/**', 'jsdom'],
       ['src/app/session.test.ts', 'jsdom'],
+      ['src/app/urlHistory.test.ts', 'jsdom'],
       ['**', 'node'],
     ],
     setupFiles: ['./test/jsdom-storage.ts'],

@@ -93,6 +93,13 @@ export class FakeStore implements TodoStore {
     return this.require(ref).modifiedTime
   }
 
+  async pickFileNamedLike(prefix: string): Promise<FileRef | null> {
+    for (const entry of this.files.values()) {
+      if (entry.name.startsWith(prefix)) return { id: entry.id, name: entry.name }
+    }
+    return null
+  }
+
   /** Simulates an edit made outside Todoom. */
   editOutside(ref: FileRef, text: string): void {
     const entry = this.files.get(ref.id)

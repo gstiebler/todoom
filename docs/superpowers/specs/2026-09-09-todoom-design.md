@@ -1,0 +1,352 @@
+# Todoom — Design Spec
+
+Date: 2026-09-09
+Status: Draft for review
+
+## 1. Summary
+
+Todoom is a browser-based task manager whose entire data model is a single
+plain-text `todo.txt` file living in the user's Google Drive. There is no
+database and no application server. The browser reads the file, holds it in
+memory, and writes it back.
+
+The file stays the source of truth. A user can open `todo.txt` in any text
+editor, in Google Docs, or in another todo.txt client, and Todoom will pick up
+the change on its next load.
+
+## 2. Goals and non-goals
+
+### Goals
+
+- Full support for the todo.txt format rules, including completion, priority,
+  creation and completion dates, projects, contexts, and `key:value` pairs.
+- Filter by project, context, and priority; free-text search.
+- `due:` dates with an overdue/today view.
+- `rec:` recurring tasks that respawn on completion.
+- Archiving completed tasks to a companion `done.txt`.
+- Runs as a static site with no backend of any kind.
+- Narrowest practical Google Drive permission.
+
+### Non-goals
+
+- Multi-user collaboration, sharing, or presence.
+- Offline use. The app requires a network connection; a service worker and
+  offline queue are explicitly out of scope.
+- Merging concurrent edits. See section 7.
+- Mobile-native apps. The layout is responsive, but the deliverable is a web page.
+- Attachments, subtasks, reminders, notifications, or calendar integration.
+
+## 3. Architecture
+
+A single-page application served as static files. Three layers, each usable and
+testable on its own.
+
+### 3.1 Core (`src/core/`)
+
+Pure functions over strings and plain objects. No DOM, no network, no clock
+except through an injected `today` value. This is where the todo.txt rules live,
+and it is the part that gets the densest tests.
+
+- `parse.ts` — `parseLine(text): Task`, `parseFile(text): Task[]`
+- `format.ts` — `formatTask(task): string`, `formatFile(tasks): string`
+- `query.ts` — filtering, searching, and sorting over `Task[]`
+- `recurrence.ts` — `nextOccurrence(task, completedOn): Task | null`
+- `archive.ts` — `splitCompleted(tasks): { keep, archive }`
+
+### 3.2 Drive adapter (`src/drive/`)
+
+The only code that talks to Google. Exposes a narrow interface so the core and
+UI never see an access token.
+
+```
+interface TodoStore {
+  signIn(): Promise<void>
+  signOut(): void
+  pickFile(): Promise<FileRef>        // Google Picker
+  createFile(name: string): Promise<FileRef>
+  read(ref: FileRef): Promise<{ text: string; modifiedTime: string }>
+  write(ref: FileRef, text: string): Promise<{ modifiedTime: string }>
+}
+```
+
+`FileRef` is `{ id, name }`. Nothing above this layer knows about Drive.
+
+### 3.3 UI (`src/ui/`)
+
+Renders the task list, the filter bar, and the editor. Holds the in-memory
+`Task[]` and a dirty flag. Calls the store on load, on save, and on archive.
+
+### 3.4 Stack
+
+Vite, TypeScript, no UI framework, no state library. The app is a list, a form,
+and a filter bar; a framework would be more machinery than the problem needs.
+Vitest for the core tests. Styling is hand-written CSS with a small set of
+custom properties, supporting light and dark via `prefers-color-scheme`.
+
+## 4. The todo.txt format
+
+Todoom implements the format rules as published at todotxt.org. One task per
+line. Blank lines are ignored on read and never written.
+
+### 4.1 Incomplete task grammar
+
+```
+[(A) ][2026-09-09 ]description
+```
+
+- Priority, if present, is a single uppercase letter in parentheses at the very
+  start, followed by a space.
+- Creation date, if present, is `YYYY-MM-DD` and comes after the priority.
+- A creation date may only appear if it is the first token after any priority.
+
+### 4.2 Completed task grammar
+
+```
+x [2026-09-10 ][2026-09-09 ]description
+```
+
+- A completed line starts with a lowercase `x` and a space.
+- The completion date directly follows. If a completion date is present, the
+  creation date follows it. A creation date is preserved through completion.
+- Todoom preserves the original priority on completion by rewriting `(A) ` as a
+  `pri:A` key-value pair, which is the common convention and keeps the
+  information recoverable when the task is un-completed.
+
+### 4.3 Tokens inside the description
+
+- `+project` — a project tag. Any non-whitespace run after `+`.
+- `@context` — a context tag.
+- `key:value` — a key-value pair. The key and value contain no whitespace and
+  no colon; the first colon separates them.
+
+Tokens may appear anywhere in the description and are kept in place in the raw
+text. The parser records them; the formatter never reorders the description.
+
+### 4.4 Parsing rule
+
+Parsing never fails. Any line that does not match the grammar is a task whose
+whole text is the description. Round-tripping is the invariant that matters:
+for any input line, `formatTask(parseLine(line)) === line`, except that Todoom
+normalizes internal runs of whitespace to a single space. This invariant gets a
+property test over generated lines.
+
+### 4.5 Task shape
+
+```
+interface Task {
+  raw: string            // original line, for round-trip fidelity
+  completed: boolean
+  priority?: string      // "A".."Z"
+  completionDate?: string
+  creationDate?: string
+  description: string
+  projects: string[]
+  contexts: string[]
+  pairs: Record<string, string>
+}
+```
+
+## 5. Google Drive integration
+
+### 5.1 Auth
+
+Google Identity Services, implicit token flow, entirely in the browser. The
+OAuth client is a Web application client with the deployed origin registered as
+an authorized JavaScript origin. There is no client secret, because a public
+client does not have one.
+
+Scope: `https://www.googleapis.com/auth/drive.file` only. This grants access to
+files the app creates and files the user explicitly hands it through the Google
+Picker. Todoom can never see the rest of the user's Drive.
+
+The access token is short-lived, roughly one hour, and is held in memory only.
+It is never written to `localStorage`, because anything in `localStorage` is
+readable by any script that gets injected into the page. When the token
+expires, the app requests a new one silently; if Google declines, the user sees
+a "Reconnect to Drive" prompt. This re-prompt is the accepted cost of having no
+backend.
+
+### 5.2 Choosing the file
+
+On first run the user has two paths.
+
+- **Create.** Todoom creates `todo.txt` in the Drive root. Because the app
+  created it, `drive.file` covers it permanently.
+- **Open existing.** Todoom opens the Google Picker filtered to `text/plain`.
+  Picking a file grants the app access to that file alone.
+
+The chosen `FileRef` is stored in `localStorage` so subsequent visits skip this
+step. The file id is not a secret; it is useless without a token.
+
+`done.txt` is created lazily in the same parent folder as `todo.txt`, the first
+time the user archives. Its id is cached alongside the todo file's.
+
+### 5.3 Reading and writing
+
+Read is `GET /drive/v3/files/{id}?alt=media`. Write is a media upload to
+`PATCH /upload/drive/v3/files/{id}?uploadType=media`. Both return
+`modifiedTime`, which the app records.
+
+Files are read and written as UTF-8 with `\n` line endings. A trailing newline
+is written. If the loaded file used `\r\n`, Todoom normalizes to `\n` on the
+next save and says so once in the status line.
+
+## 6. Saving
+
+Autosave, debounced 2 seconds after the last edit. A save also fires on window
+blur and on `visibilitychange` to hidden, so switching tabs commits the work.
+
+A `beforeunload` handler warns if a save is still pending. It cannot reliably
+complete the request, so it only warns.
+
+The status line shows one of: `Saved`, `Saving…`, `Unsaved changes`, or an
+error. Errors are shown verbatim with a Retry button; the in-memory list is
+never discarded because a write failed.
+
+## 7. Concurrency: last write wins
+
+If the file changes in Drive between Todoom's load and its next save, Todoom
+overwrites it. Edits made elsewhere in that window are lost.
+
+This is a deliberate choice for the first version, and it is the single largest
+known sharp edge in this design. Two things soften it without adding a merge
+engine:
+
+- Todoom re-reads the file on window focus when there are no unsaved local
+  changes, so a passive tab picks up outside edits rather than sitting on a
+  stale copy.
+- Before a save, Todoom compares the file's current `modifiedTime` against the
+  one it loaded. On a mismatch it still saves, but it first writes the version
+  it is about to overwrite into a sibling file named
+  `todo.conflict-YYYY-MM-DDTHH-MM-SS.txt`. Nothing is silently destroyed, and
+  recovery is a manual copy-paste rather than a lost afternoon.
+
+Real merging is the obvious follow-up if this proves annoying in practice.
+
+## 8. Features
+
+### 8.1 List and edit
+
+The list shows one row per task: a completion checkbox, the priority, the
+description with projects and contexts styled as chips, and the due date if
+present. Clicking a row opens inline editing of the raw line, which keeps the
+plain-text model visible rather than hiding it behind form fields.
+
+Adding a task is a single text input. Typed text is parsed with the same
+parser, so `(A) Call plumber +house @phone due:2026-09-12` works as typed. A
+creation date is stamped automatically unless the typed line already has one.
+
+Completing a task prepends `x` and today's date, moves any priority to `pri:`,
+and, if the task recurs, appends the next occurrence.
+
+### 8.2 Sorting
+
+Default sort: incomplete before complete, then priority ascending with
+un-prioritized last, then due date ascending with undated last, then original
+file order. Sort is a view concern only. The file's line order on disk is never
+changed by sorting; new tasks are appended.
+
+### 8.3 Filter and search
+
+A filter bar with project, context, and priority selectors, populated from the
+tasks actually present. Filters combine with AND across categories and OR
+within a category. A free-text box matches a case-insensitive substring against
+the raw line.
+
+Completed tasks are hidden by default, with a toggle to show them.
+
+Filter state lives in the URL query string, so a filtered view is bookmarkable
+and survives a reload.
+
+### 8.4 due:
+
+`due:YYYY-MM-DD`. A malformed value is left alone as an ordinary key-value pair
+and does not participate in date logic.
+
+Three quick views sit above the list: Overdue, Today, and Upcoming (the next
+seven days). These are filters, not separate screens. Overdue and today's rows
+carry a colour accent that is paired with a text label, so the state does not
+rely on colour alone.
+
+### 8.5 rec:
+
+`rec:` takes `+?<n><unit>` where unit is one of `d`, `w`, `m`, `y`.
+
+- `rec:1w` — non-strict. The next due date is one week from the completion date.
+- `rec:+1w` — strict. The next due date is one week from the previous due date,
+  regardless of when the task was actually completed. This keeps a weekly
+  obligation anchored to its day.
+
+On completing a recurring task, Todoom appends a new incomplete task: same
+description, same priority, creation date of today, and the computed `due:`.
+The completed line stays in place as a record.
+
+Month and year arithmetic clamps to the end of the month, so one month after
+January 31 is February 28 or 29.
+
+A recurring task with no `due:` uses the completion date as the anchor.
+
+### 8.6 done.txt archiving
+
+An "Archive completed" action moves every completed task out of `todo.txt` and
+appends it to `done.txt` in the same folder. The order is: write `done.txt`
+first, then rewrite `todo.txt`. If the second write fails, the tasks exist in
+both files, which is recoverable; the reverse order could lose them outright.
+
+Archiving is manual. There is no automatic sweep.
+
+## 9. Error handling
+
+Errors bubble. The core parser is the one place that swallows a malformed
+input, and it does so by design, because a todo.txt file with a weird line is
+not an error condition.
+
+Everything else, network failures included, propagates to a single top-level
+handler that renders the message in the status line and leaves the in-memory
+state untouched. Specific cases worth naming:
+
+- **401 or 403 on a request.** Try one silent token refresh, then prompt to
+  reconnect.
+- **404 on the file.** The file was deleted or unshared. Clear the cached
+  `FileRef` and return to the create-or-pick screen, keeping the in-memory
+  tasks so the user can save them somewhere new.
+- **Write failure.** Keep the dirty flag set and offer Retry.
+
+## 10. Testing
+
+- **Core, unit.** Parsing and formatting for every rule in section 4, including
+  the odd ones: a bare `x` that is not a completion marker, a priority that is
+  not at position zero, a colon inside a URL, a date-shaped word that is not in
+  the date position.
+- **Core, property.** Round-trip: parse then format equals the normalized
+  input, over generated lines.
+- **Recurrence.** Strict versus non-strict, month-end clamping, missing due
+  date, malformed `rec:` values.
+- **Query.** Filter combination logic and sort ordering.
+- **Drive adapter.** Tested against a fake implementing the `TodoStore`
+  interface. Nothing in the test suite touches the network.
+- **End to end.** Playwright over the fake store: sign in, add, complete,
+  filter, archive.
+
+## 11. Open questions
+
+1. The name in the repo is `todoom`. Is that the product name, and should the
+   page title use it?
+2. Where will this be deployed? The OAuth client needs the exact origin
+   registered before sign-in will work anywhere but `localhost`.
+3. Should the app support more than one todo file, or is a single file the
+   whole product?
+
+## 12. Assumptions
+
+Recorded because they were made without confirmation and each would change the
+work if wrong.
+
+- Single user, typically one device at a time. Last-write-wins is acceptable
+  because of this.
+- Modern evergreen browser. No transpilation targets beyond Vite's defaults.
+- English-only interface, with dates displayed in ISO form to match the file.
+- The user is comfortable with a Google consent screen that shows an
+  unverified-app warning, or will complete Google's verification themselves.
+  `drive.file` is a non-sensitive scope, so verification is light, but the
+  warning appears until the app is published.

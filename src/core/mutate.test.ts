@@ -80,3 +80,21 @@ describe('createTask', () => {
     )
   })
 })
+
+describe('raw field consistency', () => {
+  it('complete updates raw to reflect the mutated task', () => {
+    const t = complete(parseLine('Buy milk'), '2026-09-10')
+    expect(t.raw).toBe(formatTask(t))
+  })
+
+  it('uncomplete updates raw to reflect the mutated task', () => {
+    const t = uncomplete(parseLine('x 2026-09-10 2026-09-09 Buy milk'))
+    expect(t.raw).toBe(formatTask(t))
+  })
+
+  it('complete with priority restores it as a pair and updates raw', () => {
+    const t = complete(parseLine('(A) Buy milk'), '2026-09-10')
+    expect(t.raw).toBe(formatTask(t))
+    expect(t.raw).toBe('x 2026-09-10 Buy milk pri:A')
+  })
+})

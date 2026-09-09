@@ -20,7 +20,7 @@ export function removePair(description: string, key: string): string {
 
 function reparse(task: Task): Task {
   const next = parseLine(formatTask(task))
-  return { ...next, raw: task.raw }
+  return { ...next, raw: formatTask(next) }
 }
 
 export function complete(task: Task, today: string): Task {

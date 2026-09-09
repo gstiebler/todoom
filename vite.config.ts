@@ -3,6 +3,14 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   base: '/todoom/',
+  build: {
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        fixture: 'e2e/fixture.html',
+      },
+    },
+  },
   test: {
     include: ['src/**/*.test.ts'],
     environmentMatchGlobs: [

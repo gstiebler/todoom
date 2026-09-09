@@ -35,6 +35,8 @@ the change on its next load.
 - Merging concurrent edits. See section 7.
 - Mobile-native apps. The layout is responsive, but the deliverable is a web page.
 - Attachments, subtasks, reminders, notifications, or calendar integration.
+- Multiple todo files or workspaces. Todoom manages exactly one `todo.txt`
+  and its companion `done.txt`.
 
 ## 3. Architecture
 
@@ -191,6 +193,25 @@ Files are read and written as UTF-8 with `\n` line endings. A trailing newline
 is written. If the loaded file used `\r\n`, Todoom normalizes to `\n` on the
 next save and says so once in the status line.
 
+### 5.4 Deployment
+
+The app is deployed to GitHub Pages from `github.com/gstiebler/todoom`, built
+by a GitHub Actions workflow on every push to `main`. The published origin is
+`https://gstiebler.github.io`, with the app served under the `/todoom/` path.
+Vite's `base` is set to `/todoom/` so asset URLs resolve correctly.
+
+Two Google Cloud console entries must exist before sign-in works:
+
+- Authorized JavaScript origin `https://gstiebler.github.io` for the deployed
+  app, and `http://localhost:5173` for local development.
+- The OAuth consent screen configured as an External app with the
+  `drive.file` scope. It may stay in Testing mode with the developer's own
+  account added as a test user, which avoids Google's verification review
+  entirely for a single-user app.
+
+The OAuth client id is not a secret and is committed to the repository. There
+is no client secret, because a browser client does not have one.
+
 ## 6. Saving
 
 Autosave, debounced 2 seconds after the last edit. A save also fires on window
@@ -328,14 +349,18 @@ state untouched. Specific cases worth naming:
 - **End to end.** Playwright over the fake store: sign in, add, complete,
   filter, archive.
 
-## 11. Open questions
+## 11. Resolved decisions
 
-1. The name in the repo is `todoom`. Is that the product name, and should the
-   page title use it?
-2. Where will this be deployed? The OAuth client needs the exact origin
-   registered before sign-in will work anywhere but `localhost`.
-3. Should the app support more than one todo file, or is a single file the
-   whole product?
+- **Product name.** Todoom. It is the page title, the repository name, and the
+  name shown on the Google consent screen.
+- **Deployment.** GitHub Pages at `https://gstiebler.github.io/todoom/`. See
+  section 5.4.
+- **File count.** Exactly one `todo.txt` and one `done.txt`. No workspace
+  switcher, no multi-file support.
+- **Format.** Plain todo.txt rather than JSON. The deciding factor is
+  interoperability: the file must remain readable by other todo.txt clients and
+  editable by hand, which is the reason a file backend was chosen over a
+  datastore at all.
 
 ## 12. Assumptions
 
@@ -346,7 +371,8 @@ work if wrong.
   because of this.
 - Modern evergreen browser. No transpilation targets beyond Vite's defaults.
 - English-only interface, with dates displayed in ISO form to match the file.
-- The user is comfortable with a Google consent screen that shows an
-  unverified-app warning, or will complete Google's verification themselves.
-  `drive.file` is a non-sensitive scope, so verification is light, but the
-  warning appears until the app is published.
+- Todoom is a single-user app for its author. The OAuth consent screen stays
+  in Testing mode with that one account as a test user, so Google's
+  verification review never applies. Opening Todoom to other users would
+  require publishing the consent screen, at which point the unverified-app
+  warning appears until verification completes.

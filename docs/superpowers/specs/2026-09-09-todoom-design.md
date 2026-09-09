@@ -190,8 +190,8 @@ Read is `GET /drive/v3/files/{id}?alt=media`. Write is a media upload to
 `modifiedTime`, which the app records.
 
 Files are read and written as UTF-8 with `\n` line endings. A trailing newline
-is written. If the loaded file used `\r\n`, Todoom normalizes to `\n` on the
-next save and says so once in the status line.
+is written. A file that arrives with `\r\n` endings is normalized to `\n` on the
+next save, silently.
 
 ### 5.4 Deployment
 

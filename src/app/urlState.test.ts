@@ -62,4 +62,8 @@ describe('filterFromQuery', () => {
     }
     expect(filterFromQuery(filterToQuery(filter))).toEqual(filter)
   })
+
+  it('drops empty list parameters instead of filtering on an empty string', () => {
+    expect(filterFromQuery('?project=&context=&pri=')).toEqual(emptyFilter())
+  })
 })

@@ -14,14 +14,20 @@ export function filterToQuery(filter: Filter): string {
   return params.toString()
 }
 
+// An empty parameter (`project=`) carries no value; dropping it keeps a
+// stray or hand-edited URL from filtering on the empty string.
+function values(params: URLSearchParams, name: string): string[] {
+  return params.getAll(name).filter((value) => value.length > 0)
+}
+
 export function filterFromQuery(query: string): Filter {
   const params = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query)
   const due = params.get('due')
   return {
     ...emptyFilter(),
-    projects: params.getAll('project'),
-    contexts: params.getAll('context'),
-    priorities: params.getAll('pri'),
+    projects: values(params, 'project'),
+    contexts: values(params, 'context'),
+    priorities: values(params, 'pri'),
     search: params.get('q') ?? '',
     showCompleted: params.get('done') === '1',
     dueView: due && DUE_VIEWS.includes(due as DueView) ? (due as DueView) : 'all',

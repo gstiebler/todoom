@@ -4,7 +4,10 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: '/todoom/',
   test: {
-    environment: 'node',
     include: ['src/**/*.test.ts'],
+    environmentMatchGlobs: [
+      ['src/ui/**', 'jsdom'],
+      ['**', 'node'],
+    ],
   },
 })

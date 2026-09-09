@@ -1,0 +1,124 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+  --overdue: #b91c1c;
+  --today: #b45309;
+  --surface: #f9fafb;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111315;
+    --fg: #e8e8e8;
+    --muted: #9ca3af;
+    --border: #2a2e33;
+    --accent: #60a5fa;
+    --overdue: #f87171;
+    --today: #fbbf24;
+    --surface: #191c1f;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app { max-width: 780px; margin: 0 auto; padding: 24px 16px 64px; }
+
+.topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.topbar h1 { font-size: 20px; margin: 0; }
+
+.status { color: var(--muted); font-size: 13px; }
+.status--error { color: var(--overdue); }
+.status__retry { padding: 3px 9px; font-size: 13px; }
+
+.add-form { display: flex; gap: 8px; margin-bottom: 16px; }
+
+.add-input, .search, .task__editor {
+  flex: 1;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+button {
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover { border-color: var(--accent); }
+
+.views, .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+.view-btn--active, .chip--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.chip { font-size: 13px; padding: 4px 9px; }
+
+.search { width: 100%; margin-bottom: 16px; }
+
+.task-list { list-style: none; margin: 0; padding: 0; }
+
+.task {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.task--done .task__text { color: var(--muted); text-decoration: line-through; }
+.task--overdue .task__due { color: var(--overdue); font-weight: 600; }
+.task--today .task__due { color: var(--today); font-weight: 600; }
+
+.task__check { margin: 0; }
+.task__pri { font-weight: 700; color: var(--accent); }
+.task__text { flex: 1; cursor: text; word-break: break-word; }
+.task__due, .task__badge { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+.task__delete {
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 0 6px;
+  font-size: 16px;
+}
+
+.task__delete:hover { color: var(--overdue); }
+
+.tag { font-size: 13px; }
+.tag--project { color: var(--accent); }
+.tag--context { color: var(--today); }
+
+.empty { color: var(--muted); padding: 24px 0; text-align: center; }
+
+.signin { text-align: center; padding: 64px 0; }
+.signin p { color: var(--muted); }

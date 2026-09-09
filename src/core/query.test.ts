@@ -1,0 +1,132 @@
+import { describe, it, expect } from 'vitest'
+import {
+  emptyFilter,
+  filterTasks,
+  sortTasks,
+  collectProjects,
+  collectContexts,
+  collectPriorities,
+} from './query'
+import { parseFile } from './parse'
+import { formatTask } from './format'
+
+const TODAY = '2026-09-10'
+
+const sample = parseFile(
+  [
+    '(A) Call plumber +house @phone',
+    '(B) Email landlord +house @computer due:2026-09-10',
+    'Buy milk +groceries @store due:2026-09-01',
+    'Read book @home due:2026-09-14',
+    'Plan trip @home due:2026-09-30',
+    'x 2026-09-09 Old task +house',
+  ].join('\n'),
+)
+
+describe('collectors', () => {
+  it('collects sorted unique projects', () => {
+    expect(collectProjects(sample)).toEqual(['groceries', 'house'])
+  })
+
+  it('collects sorted unique contexts', () => {
+    expect(collectContexts(sample)).toEqual(['computer', 'home', 'phone', 'store'])
+  })
+
+  it('collects sorted unique priorities', () => {
+    expect(collectPriorities(sample)).toEqual(['A', 'B'])
+  })
+})
+
+describe('filterTasks', () => {
+  it('hides completed tasks by default', () => {
+    const out = filterTasks(sample, emptyFilter(), TODAY)
+    expect(out.every((t) => !t.completed)).toBe(true)
+    expect(out).toHaveLength(5)
+  })
+
+  it('shows completed tasks when asked', () => {
+    const out = filterTasks(sample, { ...emptyFilter(), showCompleted: true }, TODAY)
+    expect(out).toHaveLength(6)
+  })
+
+  it('filters by project', () => {
+    const out = filterTasks(sample, { ...emptyFilter(), projects: ['house'] }, TODAY)
+    expect(out).toHaveLength(2)
+  })
+
+  it('ORs within a category', () => {
+    const out = filterTasks(sample, { ...emptyFilter(), contexts: ['phone', 'store'] }, TODAY)
+    expect(out).toHaveLength(2)
+  })
+
+  it('ANDs across categories', () => {
+    const out = filterTasks(
+      sample,
+      { ...emptyFilter(), projects: ['house'], contexts: ['phone'] },
+      TODAY,
+    )
+    expect(out).toHaveLength(1)
+    expect(out[0]?.description).toContain('plumber')
+  })
+
+  it('filters by priority', () => {
+    const out = filterTasks(sample, { ...emptyFilter(), priorities: ['A'] }, TODAY)
+    expect(out).toHaveLength(1)
+  })
+
+  it('searches case-insensitively across the line', () => {
+    const out = filterTasks(sample, { ...emptyFilter(), search: 'PLUMBER' }, TODAY)
+    expect(out).toHaveLength(1)
+  })
+
+  it('selects overdue tasks', () => {
+    const out = filterTasks(sample, { ...emptyFilter(), dueView: 'overdue' }, TODAY)
+    expect(out).toHaveLength(1)
+    expect(out[0]?.description).toContain('milk')
+  })
+
+  it('selects tasks due today', () => {
+    const out = filterTasks(sample, { ...emptyFilter(), dueView: 'today' }, TODAY)
+    expect(out).toHaveLength(1)
+    expect(out[0]?.description).toContain('landlord')
+  })
+
+  it('selects tasks due in the next seven days including today', () => {
+    const out = filterTasks(sample, { ...emptyFilter(), dueView: 'upcoming' }, TODAY)
+    expect(out).toHaveLength(2)
+  })
+
+  it('excludes undated tasks from due views', () => {
+    const out = filterTasks(sample, { ...emptyFilter(), dueView: 'upcoming' }, TODAY)
+    expect(out.every((t) => t.pairs['due'] !== undefined)).toBe(true)
+  })
+})
+
+describe('sortTasks', () => {
+  it('orders incomplete before complete, then priority, then due date', () => {
+    const tasks = parseFile(
+      [
+        'x 2026-09-09 Done thing',
+        'No priority no due',
+        '(B) Second',
+        'Undated but named due:2026-09-11',
+        '(A) First',
+      ].join('\n'),
+    )
+    const out = sortTasks(tasks).map((t) => formatTask(t))
+    expect(out).toEqual([
+      '(A) First',
+      '(B) Second',
+      'Undated but named due:2026-09-11',
+      'No priority no due',
+      'x 2026-09-09 Done thing',
+    ])
+  })
+
+  it('does not mutate the input array', () => {
+    const tasks = parseFile('(B) b\n(A) a')
+    const before = tasks.map((t) => t.description)
+    sortTasks(tasks)
+    expect(tasks.map((t) => t.description)).toEqual(before)
+  })
+})

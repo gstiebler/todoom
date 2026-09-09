@@ -17,9 +17,9 @@ describe('filterToQuery', () => {
       dueView: 'overdue',
     })
     const params = new URLSearchParams(query)
-    expect(params.get('project')).toBe('house,work')
-    expect(params.get('context')).toBe('phone')
-    expect(params.get('pri')).toBe('A')
+    expect(params.getAll('project')).toEqual(['house', 'work'])
+    expect(params.getAll('context')).toEqual(['phone'])
+    expect(params.getAll('pri')).toEqual(['A'])
     expect(params.get('q')).toBe('call plumber')
     expect(params.get('done')).toBe('1')
     expect(params.get('due')).toBe('overdue')
@@ -47,6 +47,18 @@ describe('filterFromQuery', () => {
       search: 'milk',
       showCompleted: true,
       dueView: 'upcoming' as const,
+    }
+    expect(filterFromQuery(filterToQuery(filter))).toEqual(filter)
+  })
+
+  it('round trips values with special characters including commas', () => {
+    const filter = {
+      projects: ['my,project', 'work&life', 'key=value'],
+      contexts: ['area+office', 'place with space', 'café'],
+      priorities: ['A', 'B%'],
+      search: 'find & replace % something',
+      showCompleted: false,
+      dueView: 'today' as const,
     }
     expect(filterFromQuery(filterToQuery(filter))).toEqual(filter)
   })

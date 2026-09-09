@@ -12,6 +12,8 @@ export class FakeStore implements TodoStore {
   private files = new Map<string, Entry>()
   private counter = 0
   private clock = 0
+  private pendingWriteGate: { markStarted: () => void; releaseGate: Promise<void> } | null = null
+  private failingWrites = new Set<string>()
 
   constructor(seed: Record<string, string> = {}) {
     for (const [name, text] of Object.entries(seed)) {
@@ -84,9 +86,39 @@ export class FakeStore implements TodoStore {
 
   async write(ref: FileRef, text: string): Promise<{ modifiedTime: string }> {
     const entry = this.require(ref)
+    if (this.failingWrites.has(entry.name)) {
+      this.failingWrites.delete(entry.name)
+      throw new Error(`simulated write failure for ${entry.name}`)
+    }
+    if (this.pendingWriteGate) {
+      const gate = this.pendingWriteGate
+      this.pendingWriteGate = null
+      gate.markStarted()
+      await gate.releaseGate
+    }
     entry.text = text
     entry.modifiedTime = this.stamp()
     return { modifiedTime: entry.modifiedTime }
+  }
+
+  /** Holds the next write() call open until release() is called. Lets a test interleave
+   * another operation with an in-flight save. */
+  holdNextWrite(): { writeStarted: Promise<void>; release: () => void } {
+    let markStarted!: () => void
+    const writeStarted = new Promise<void>((resolve) => {
+      markStarted = resolve
+    })
+    let release!: () => void
+    const releaseGate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    this.pendingWriteGate = { markStarted, releaseGate }
+    return { writeStarted, release }
+  }
+
+  /** Makes the next write() to a file with this name throw. */
+  failNextWriteTo(name: string): void {
+    this.failingWrites.add(name)
   }
 
   async getModifiedTime(ref: FileRef): Promise<string> {

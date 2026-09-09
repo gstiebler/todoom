@@ -10,6 +10,10 @@ import { splitCompleted } from '../core/archive'
 
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
+function isErrorState(state: AppState): boolean {
+  return state.saveState === 'error'
+}
+
 export interface AppState {
   tasks: Task[]
   filter: Filter
@@ -29,6 +33,7 @@ export class TodoomApp {
 
   private listeners = new Set<() => void>()
   private ref: FileRef | null = null
+  private revision = 0
 
   constructor(
     private store: TodoStore,
@@ -45,6 +50,7 @@ export class TodoomApp {
   }
 
   private markDirty(): void {
+    this.revision += 1
     this.state.saveState = 'dirty'
     this.notify()
   }
@@ -126,9 +132,11 @@ export class TodoomApp {
       if (this.state.loadedModifiedTime && current !== this.state.loadedModifiedTime) {
         await this.writeConflictCopy(ref)
       }
-      const { modifiedTime } = await this.store.write(ref, formatFile(this.state.tasks))
+      const revisionAtWrite = this.revision
+      const payload = formatFile(this.state.tasks)
+      const { modifiedTime } = await this.store.write(ref, payload)
       this.state.loadedModifiedTime = modifiedTime
-      this.state.saveState = 'saved'
+      this.state.saveState = revisionAtWrite === this.revision ? 'saved' : 'dirty'
     } catch (error) {
       this.state.saveState = 'error'
       this.state.error = error instanceof Error ? error.message : String(error)
@@ -163,6 +171,9 @@ export class TodoomApp {
     this.state.tasks = keep
     this.state.saveState = 'dirty'
     await this.save()
+    if (isErrorState(this.state)) {
+      throw new Error(this.state.error ?? 'failed to save todo.txt after archiving')
+    }
     return archive.length
   }
 }

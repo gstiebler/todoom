@@ -130,6 +130,18 @@ describe('save', () => {
     expect(app.state.error).toContain('not signed in')
     expect(app.state.tasks).toHaveLength(2)
   })
+
+  it('stays dirty if an edit lands while a save is still in flight', async () => {
+    const { app, store } = await setup()
+    app.addTask('Call plumber')
+    const gate = store.holdNextWrite()
+    const savePromise = app.save()
+    await gate.writeStarted
+    app.addTask('Another task, added mid-save')
+    gate.release()
+    await savePromise
+    expect(app.state.saveState).toBe('dirty')
+  })
 })
 
 describe('refreshIfClean', () => {
@@ -173,6 +185,15 @@ describe('archive', () => {
   it('does nothing when nothing is complete', async () => {
     const { app } = await setup('a\n')
     expect(await app.archive()).toBe(0)
+  })
+
+  it('surfaces failure when the todo.txt write fails after done.txt already succeeded', async () => {
+    const { app, store, ref } = await setup('a\nx 2026-09-09 b\n')
+    store.failNextWriteTo('todo.txt')
+    await expect(app.archive()).rejects.toThrow()
+    expect(app.state.saveState).toBe('error')
+    const done = await store.findOrCreateSibling(ref, 'done.txt')
+    expect((await store.read(done)).text).toBe('x 2026-09-09 b\n')
   })
 })
 

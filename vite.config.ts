@@ -1,7 +1,8 @@
-/// <reference types="vitest" />
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+  plugins: [react()],
   build: {
     rollupOptions: {
       input: {
@@ -12,12 +13,9 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts?(x)', 'worker/**/*.test.ts'],
-    environmentMatchGlobs: [
-      ['src/ui/**', 'jsdom'],
-      ['src/app/session.test.ts', 'jsdom'],
-      ['src/app/urlHistory.test.ts', 'jsdom'],
-      ['**', 'node'],
-    ],
+    // Vitest 4 dropped environmentMatchGlobs; the files that need a DOM say so
+    // themselves with a `@vitest-environment jsdom` docblock.
+    environment: 'node',
     setupFiles: ['./test/jsdom-storage.ts'],
   },
 })

@@ -54,3 +54,13 @@ export function createTask(input: string, today: string): Task {
   if (parsed.creationDate) return parsed
   return reparse({ ...parsed, creationDate: today })
 }
+
+export function addAttachment(task: Task, id: string): Task {
+  if (task.attachments.includes(id)) return task
+  return reparse({ ...task, description: normalizeLine(`${task.description} file:${id}`) })
+}
+
+export function removeAttachment(task: Task, id: string): Task {
+  const re = new RegExp(`(?:^|\\s)file:${id}(?=\\s|$)`)
+  return reparse({ ...task, description: normalizeLine(task.description.replace(re, '')) })
+}

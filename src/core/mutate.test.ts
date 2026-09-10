@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { complete, uncomplete, createTask, setPairValue, removePair } from './mutate'
+import {
+  complete,
+  uncomplete,
+  createTask,
+  setPairValue,
+  removePair,
+  addAttachment,
+  removeAttachment,
+} from './mutate'
 import { parseLine } from './parse'
 import { formatTask } from './format'
 
@@ -96,5 +104,17 @@ describe('raw field consistency', () => {
     const t = complete(parseLine('(A) Buy milk'), '2026-09-10')
     expect(t.raw).toBe(formatTask(t))
     expect(t.raw).toBe('x 2026-09-10 Buy milk pri:A')
+  })
+})
+
+describe('attachments', () => {
+  it('appends a file id once', () => {
+    const once = addAttachment(parseLine('Buy milk'), 'aaa')
+    expect(addAttachment(once, 'aaa').raw).toBe('Buy milk file:aaa')
+  })
+
+  it('removes only the named file id', () => {
+    const task = parseLine('Buy milk file:aaa file:bbb')
+    expect(removeAttachment(task, 'aaa').raw).toBe('Buy milk file:bbb')
   })
 })

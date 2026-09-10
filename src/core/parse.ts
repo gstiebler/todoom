@@ -4,6 +4,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const PRIORITY_RE = /^\(([A-Z])\) /
 const PROJECT_RE = /(?:^|\s)\+(\S+)/g
 const CONTEXT_RE = /(?:^|\s)@(\S+)/g
+const ATTACHMENT_RE = /(?:^|\s)file:([A-Za-z0-9_-]+)(?=\s|$)/g
 const PAIR_RE = /(?:^|\s)([A-Za-z0-9_-]+):([^\s:/][^\s:]*)(?=\s|$)/g
 
 export function normalizeLine(line: string): string {
@@ -54,6 +55,7 @@ export function parseLine(line: string): Task {
     description,
     projects: collect(description, PROJECT_RE),
     contexts: collect(description, CONTEXT_RE),
+    attachments: collect(description, ATTACHMENT_RE),
     pairs: collectPairs(description),
   }
 }

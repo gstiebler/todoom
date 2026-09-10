@@ -7,6 +7,7 @@ export interface Task {
   description: string
   projects: string[]
   contexts: string[]
+  attachments: string[]
   pairs: Record<string, string>
 }
 
@@ -17,6 +18,7 @@ export function emptyTask(): Task {
     description: '',
     projects: [],
     contexts: [],
+    attachments: [],
     pairs: {},
   }
 }

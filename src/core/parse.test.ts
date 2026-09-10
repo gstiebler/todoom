@@ -132,3 +132,21 @@ describe('parseFile', () => {
     expect(parseFile('')).toEqual([])
   })
 })
+
+describe('attachments', () => {
+  it('collects a file id', () => {
+    expect(parseLine('Buy milk file:1AbC_dEf23').attachments).toEqual(['1AbC_dEf23'])
+  })
+
+  it('collects several file ids', () => {
+    expect(parseLine('Buy milk file:aaa file:bbb').attachments).toEqual(['aaa', 'bbb'])
+  })
+
+  it('has no attachments without a file word', () => {
+    expect(parseLine('Buy milk').attachments).toEqual([])
+  })
+
+  it('ignores a file word with an empty id', () => {
+    expect(parseLine('Buy milk file:').attachments).toEqual([])
+  })
+})

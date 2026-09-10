@@ -58,3 +58,12 @@ test('archives completed tasks', async ({ page }) => {
   await page.getByRole('button', { name: 'Show completed', exact: true }).click()
   await expect(page.locator('.task')).toHaveCount(1)
 })
+
+test('attaches a file to a task', async ({ page }) => {
+  await page.goto(PAGE)
+  const row = page.locator('.task', { hasText: 'Buy milk' })
+  await row.locator('.task__attach').click()
+  await page.setInputFiles('.attachment__picker', 'e2e/files/recipe.txt')
+  await expect(page.locator('.attachment')).toHaveText(/recipe.txt/)
+  await expect(row.locator('.task__attach')).toHaveText('1')
+})

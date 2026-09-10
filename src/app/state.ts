@@ -2,6 +2,7 @@ import { makeAutoObservable, runInAction } from 'mobx'
 import type { Task } from '../core/types'
 import type { Filter } from '../core/query'
 import type { FileRef, TodoStore } from '../drive/store'
+import type { Workspace } from './session'
 import { parseFile, parseLine } from '../core/parse'
 import { formatFile } from '../core/format'
 import { complete, uncomplete, createTask } from '../core/mutate'
@@ -32,7 +33,7 @@ export class TodoomApp {
     loadedModifiedTime: null,
   }
 
-  private ref: FileRef | null = null
+  private workspace: Workspace | null = null
   private revision = 0
 
   constructor(
@@ -50,15 +51,25 @@ export class TodoomApp {
     this.state.saveState = 'dirty'
   }
 
-  private requireRef(): FileRef {
-    if (!this.ref) throw new Error('no file loaded')
-    return this.ref
+  private requireWorkspace(): Workspace {
+    if (!this.workspace) throw new Error('no file loaded')
+    return this.workspace
   }
 
-  async load(ref: FileRef): Promise<void> {
-    const { text, modifiedTime } = await this.store.read(ref)
+  private requireRef(): FileRef {
+    return this.requireWorkspace().todo
+  }
+
+  /** The Drive folder holding todo.txt, done.txt and every attachment. */
+  get folder(): FileRef {
+    if (!this.workspace) throw new Error('no file loaded')
+    return this.workspace.folder
+  }
+
+  async load(workspace: Workspace): Promise<void> {
+    const { text, modifiedTime } = await this.store.read(workspace.todo)
     runInAction(() => {
-      this.ref = ref
+      this.workspace = workspace
       this.state.tasks = parseFile(text)
       this.state.loadedModifiedTime = modifiedTime
       this.state.saveState = 'idle'
@@ -144,24 +155,24 @@ export class TodoomApp {
   private async writeConflictCopy(ref: FileRef): Promise<void> {
     const { text } = await this.store.read(ref)
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    const copy = await this.store.findOrCreateSibling(ref, `todo.conflict-${stamp}.txt`)
+    const copy = await this.store.findOrCreateFileIn(this.folder, `todo.conflict-${stamp}.txt`)
     await this.store.write(copy, text)
   }
 
   async refreshIfClean(): Promise<void> {
     if (this.state.saveState === 'dirty' || this.state.saveState === 'error') return
-    const ref = this.requireRef()
-    const current = await this.store.getModifiedTime(ref)
+    const workspace = this.requireWorkspace()
+    const current = await this.store.getModifiedTime(workspace.todo)
     if (current === this.state.loadedModifiedTime) return
-    await this.load(ref)
+    await this.load(workspace)
   }
 
   async archive(): Promise<number> {
-    const ref = this.requireRef()
+    this.requireRef()
     const { archive } = splitCompleted(this.state.tasks)
     if (archive.length === 0) return 0
 
-    const done = await this.store.findOrCreateSibling(ref, 'done.txt')
+    const done = await this.store.findOrCreateFileIn(this.folder, 'done.txt')
     const existing = (await this.store.read(done)).text
     await this.store.write(done, existing + formatFile(archive))
 

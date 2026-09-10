@@ -9,10 +9,10 @@ const TODAY = '2026-09-10'
 async function setup(seed = 'Buy milk\n') {
   const store = new FakeStore({ 'todo.txt': seed })
   await store.signIn()
-  const ref = store.refFor('todo.txt')
+  const workspace = await store.workspace()
   const app = new TodoomApp(store, () => TODAY)
-  await app.load(ref)
-  return { store, ref, app }
+  await app.load(workspace)
+  return { store, workspace, app }
 }
 
 describe('load', () => {
@@ -97,26 +97,26 @@ describe('visibleTasks', () => {
 
 describe('save', () => {
   it('writes the file and clears the dirty flag', async () => {
-    const { app, store, ref } = await setup()
+    const { app, store, workspace } = await setup()
     app.addTask('Call plumber')
     await app.save()
     expect(app.state.saveState).toBe('saved')
-    expect((await store.read(ref)).text).toBe('Buy milk\n2026-09-10 Call plumber\n')
+    expect((await store.read(workspace.todo)).text).toBe('Buy milk\n2026-09-10 Call plumber\n')
   })
 
   it('does nothing when there is nothing to save', async () => {
-    const { app, store, ref } = await setup()
-    const before = await store.getModifiedTime(ref)
+    const { app, store, workspace } = await setup()
+    const before = await store.getModifiedTime(workspace.todo)
     await app.save()
-    expect(await store.getModifiedTime(ref)).toBe(before)
+    expect(await store.getModifiedTime(workspace.todo)).toBe(before)
   })
 
   it('writes a conflict copy when the file changed underneath', async () => {
-    const { app, store, ref } = await setup()
-    store.editOutside(ref, 'Edited elsewhere\n')
+    const { app, store, workspace } = await setup()
+    store.editOutside(workspace.todo, 'Edited elsewhere\n')
     app.addTask('Call plumber')
     await app.save()
-    expect((await store.read(ref)).text).toContain('Call plumber')
+    expect((await store.read(workspace.todo)).text).toContain('Call plumber')
     const conflict = await store.findFileNamedLike('todo.conflict-')
     expect(conflict).not.toBeNull()
     expect((await store.read(conflict!)).text).toBe('Edited elsewhere\n')
@@ -147,16 +147,16 @@ describe('save', () => {
 
 describe('refreshIfClean', () => {
   it('reloads when there are no local changes', async () => {
-    const { app, store, ref } = await setup()
-    store.editOutside(ref, 'Edited elsewhere\n')
+    const { app, store, workspace } = await setup()
+    store.editOutside(workspace.todo, 'Edited elsewhere\n')
     await app.refreshIfClean()
     expect(app.state.tasks.map((t) => t.description)).toEqual(['Edited elsewhere'])
   })
 
   it('does not reload when there are local changes', async () => {
-    const { app, store, ref } = await setup()
+    const { app, store, workspace } = await setup()
     app.addTask('Call plumber')
-    store.editOutside(ref, 'Edited elsewhere\n')
+    store.editOutside(workspace.todo, 'Edited elsewhere\n')
     await app.refreshIfClean()
     expect(app.state.tasks).toHaveLength(2)
   })
@@ -164,20 +164,20 @@ describe('refreshIfClean', () => {
 
 describe('archive', () => {
   it('moves completed tasks to done.txt', async () => {
-    const { app, store, ref } = await setup('a\nx 2026-09-09 b\n')
+    const { app, store, workspace } = await setup('a\nx 2026-09-09 b\n')
     const moved = await app.archive()
     expect(moved).toBe(1)
-    expect((await store.read(ref)).text).toBe('a\n')
-    const done = await store.findOrCreateSibling(ref, 'done.txt')
+    expect((await store.read(workspace.todo)).text).toBe('a\n')
+    const done = await store.findOrCreateFileIn(workspace.folder, 'done.txt')
     expect((await store.read(done)).text).toBe('x 2026-09-09 b\n')
   })
 
   it('appends to an existing done.txt', async () => {
     const store = new FakeStore({ 'todo.txt': 'a\nx 2026-09-09 b\n', 'done.txt': 'x 2026-01-01 old\n' })
     await store.signIn()
-    const ref = store.refFor('todo.txt')
+    const workspace = await store.workspace()
     const app = new TodoomApp(store, () => TODAY)
-    await app.load(ref)
+    await app.load(workspace)
     await app.archive()
     const done = store.refFor('done.txt')
     expect((await store.read(done)).text).toBe('x 2026-01-01 old\nx 2026-09-09 b\n')
@@ -189,16 +189,16 @@ describe('archive', () => {
   })
 
   it('surfaces failure when the todo.txt write fails after done.txt already succeeded', async () => {
-    const { app, store, ref } = await setup('a\nx 2026-09-09 b\n')
+    const { app, store, workspace } = await setup('a\nx 2026-09-09 b\n')
     store.failNextWriteTo('todo.txt')
     await expect(app.archive()).rejects.toThrow()
     expect(app.state.saveState).toBe('error')
-    const done = await store.findOrCreateSibling(ref, 'done.txt')
+    const done = await store.findOrCreateFileIn(workspace.folder, 'done.txt')
     expect((await store.read(done)).text).toBe('x 2026-09-09 b\n')
   })
 
   it('preserves an edit made while the archive write is in flight', async () => {
-    const { app, store, ref } = await setup('a\nx 2026-09-09 b\n')
+    const { app, store, workspace } = await setup('a\nx 2026-09-09 b\n')
     const gate = store.holdNextWrite()
 
     const archivePromise = app.archive()
@@ -208,7 +208,7 @@ describe('archive', () => {
 
     await expect(archivePromise).resolves.toBe(1)
     expect(app.state.tasks.map(formatTask)).toEqual(['a, edited mid-archive'])
-    expect((await store.read(ref)).text).toBe('a, edited mid-archive\n')
+    expect((await store.read(workspace.todo)).text).toBe('a, edited mid-archive\n')
   })
 })
 

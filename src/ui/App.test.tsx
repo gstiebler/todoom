@@ -11,7 +11,7 @@ async function mount(seed: string) {
   const store = new FakeStore({ 'todo.txt': seed })
   await store.signIn()
   const app = new TodoomApp(store, () => TODAY)
-  await app.load(store.refFor('todo.txt'))
+  await app.load(await store.workspace())
   const { container } = render(<App app={app} today={() => TODAY} />)
   return { app, root: container, store }
 }

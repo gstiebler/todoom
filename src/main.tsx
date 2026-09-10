@@ -3,12 +3,12 @@ import { reaction } from 'mobx'
 import { createRoot } from 'react-dom/client'
 import { TodoomApp } from './app/state'
 import { GoogleDriveStore } from './drive/googleStore'
-import type { FileRef, TodoStore } from './drive/store'
+import type { TodoStore } from './drive/store'
 import { App } from './ui/App'
 import { SignIn } from './ui/SignIn'
 import { filterFromQuery } from './app/urlState'
 import { syncFilterHistory } from './app/urlHistory'
-import { clearFileRef, createDebouncedSaver, loadOrCreateTodoFile } from './app/session'
+import { clearWorkspace, createDebouncedSaver, openWorkspace, type Workspace } from './app/session'
 import { SignedOutError } from './drive/tokens'
 
 const root = document.querySelector<HTMLDivElement>('#app')
@@ -26,7 +26,7 @@ function showSignIn(message: string, actions: Array<[string, () => void]>): void
   reactRoot.render(<SignIn message={message} actions={actions} />)
 }
 
-function start(store: TodoStore, ref: FileRef): void {
+function start(store: TodoStore, workspace: Workspace): void {
   const app = new TodoomApp(store, todayIso)
   const saver = createDebouncedSaver(app, 2000)
 
@@ -69,14 +69,14 @@ function start(store: TodoStore, ref: FileRef): void {
   })
 
   app
-    .load(ref)
+    .load(workspace)
     .then(() => {
       reactRoot.render(<App app={app} today={todayIso} />)
     })
     .catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('404')) {
-        clearFileRef()
+        clearWorkspace()
         showSignIn('That file is gone from Drive. Reload to create a new todo.txt.', [
           ['Reload', () => window.location.reload()],
         ])
@@ -116,8 +116,8 @@ function main(): void {
 
   store
     .signIn()
-    .then(() => loadOrCreateTodoFile(store))
-    .then((ref) => start(store, ref))
+    .then(() => openWorkspace(store))
+    .then((workspace) => start(store, workspace))
     .catch((cause: unknown) => {
       if (cause instanceof SignedOutError) {
         offerConnect(error ? `sign-in failed: ${error}` : undefined)

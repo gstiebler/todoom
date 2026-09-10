@@ -1,24 +1,34 @@
 import type { FileRef, TodoStore } from '../drive/store'
 import type { TodoomApp } from './state'
 
-const KEY = 'todoom.rootFileRef'
+const KEY = 'todoom.workspace'
 
-export function saveFileRef(ref: FileRef): void {
-  localStorage.setItem(KEY, JSON.stringify(ref))
+/** The Todoom folder in Drive and the todo file inside it. */
+export interface Workspace {
+  folder: FileRef
+  todo: FileRef
 }
 
-export function loadFileRef(): FileRef | null {
+export function saveWorkspace(workspace: Workspace): void {
+  localStorage.setItem(KEY, JSON.stringify(workspace))
+}
+
+function isRef(value: unknown): value is FileRef {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as FileRef).id === 'string' &&
+    typeof (value as FileRef).name === 'string'
+  )
+}
+
+export function loadWorkspace(): Workspace | null {
   const raw = localStorage.getItem(KEY)
   if (!raw) return null
   try {
-    const parsed = JSON.parse(raw) as unknown
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      typeof (parsed as FileRef).id === 'string' &&
-      typeof (parsed as FileRef).name === 'string'
-    ) {
-      return parsed as FileRef
+    const parsed = JSON.parse(raw) as { folder?: unknown; todo?: unknown }
+    if (isRef(parsed.folder) && isRef(parsed.todo)) {
+      return { folder: parsed.folder, todo: parsed.todo }
     }
     return null
   } catch {
@@ -26,20 +36,21 @@ export function loadFileRef(): FileRef | null {
   }
 }
 
-export function clearFileRef(): void {
+export function clearWorkspace(): void {
   localStorage.removeItem(KEY)
 }
 
-export async function loadOrCreateTodoFile(
-  store: Pick<TodoStore, 'findOrCreateRootFile'>,
-): Promise<FileRef> {
-  const saved = loadFileRef()
+export async function openWorkspace(
+  store: Pick<TodoStore, 'findOrCreateFolder' | 'findOrCreateFileIn'>,
+): Promise<Workspace> {
+  const saved = loadWorkspace()
   if (saved) return saved
-  const created = await store.findOrCreateRootFile('todo.txt')
-  saveFileRef(created)
-  return created
+  const folder = await store.findOrCreateFolder('Todoom')
+  const todo = await store.findOrCreateFileIn(folder, 'todo.txt')
+  const workspace = { folder, todo }
+  saveWorkspace(workspace)
+  return workspace
 }
-
 export function createDebouncedSaver(
   app: TodoomApp,
   delayMs: number,

@@ -18,10 +18,6 @@ interface DriveFileList {
   files?: DriveFile[]
 }
 
-interface DriveFileParents {
-  parents?: string[]
-}
-
 interface DriveFileModifiedTime {
   modifiedTime: string
 }
@@ -95,57 +91,6 @@ export class GoogleDriveStore implements TodoStore {
     const headers = new Headers(init.headers)
     headers.set('Authorization', `Bearer ${token}`)
     return fetch(url, { ...init, headers })
-  }
-
-  async createFile(name: string, parent?: string): Promise<FileRef> {
-    const metadata: Record<string, unknown> = { name, mimeType: 'text/plain' }
-    if (parent) metadata['parents'] = [parent]
-    const response = await this.request(`${FILES}?fields=id,name`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(metadata),
-    })
-    const json = (await response.json()) as DriveFile
-    return { id: json.id, name: json.name }
-  }
-
-  async findOrCreateRootFile(name: string): Promise<FileRef> {
-    const query = [
-      `name = '${quoteForQuery(name)}'`,
-      'trashed = false',
-      "'root' in parents",
-    ].join(' and ')
-    const response = await this.request(
-      `${FILES}?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=1`,
-    )
-    const json = (await response.json()) as DriveFileList
-    const found = json.files?.[0]
-    if (found) return { id: found.id, name: found.name }
-    return this.createFile(name, 'root')
-  }
-
-  private async parentOf(ref: FileRef): Promise<string | undefined> {
-    const response = await this.request(`${FILES}/${ref.id}?fields=parents`)
-    const json = (await response.json()) as DriveFileParents
-    return json.parents?.[0]
-  }
-
-  async findOrCreateSibling(ref: FileRef, name: string): Promise<FileRef> {
-    const parent = await this.parentOf(ref)
-    const query = [
-      `name = '${quoteForQuery(name)}'`,
-      'trashed = false',
-      parent ? `'${quoteForQuery(parent)}' in parents` : null,
-    ]
-      .filter((clause): clause is string => clause !== null)
-      .join(' and ')
-    const response = await this.request(
-      `${FILES}?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=1`,
-    )
-    const json = (await response.json()) as DriveFileList
-    const found = json.files?.[0]
-    if (found) return { id: found.id, name: found.name }
-    return this.createFile(name, parent)
   }
 
   private async findIn(parent: string, name: string, mimeType?: string): Promise<DriveEntry | null> {

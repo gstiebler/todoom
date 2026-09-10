@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   })
   await store.signIn()
   const app = new TodoomApp(store, () => TODAY)
-  await app.load(store.refFor('todo.txt'))
+  await app.load(await store.workspace())
 
   // A reaction's effect runs untracked, so it may change state; calling save()
   // from inside an autorun's tracked body would be a write from within a

@@ -72,6 +72,13 @@ const AddTaskModal = observer(function AddTaskModal({
           onChange={(event) => setDraft({ ...draft, text: event.target.value })}
         />
 
+        <input
+          className="add-description"
+          placeholder="Description"
+          value={draft.note}
+          onChange={(event) => setDraft({ ...draft, note: event.target.value })}
+        />
+
         <div className="chip-row">
           <button
             type="button"

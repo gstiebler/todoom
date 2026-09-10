@@ -338,3 +338,23 @@ describe('attaching while composing', () => {
     expect(files.map((f) => f.name)).not.toContain('spec.pdf')
   })
 })
+
+describe('task description', () => {
+  it('adds the description typed in the composer', async () => {
+    const { root, app } = await mount('')
+    type_(root, 'Call plumber')
+    fireEvent.change(root.querySelector('.add-description')!, {
+      target: { value: 'Ask about the boiler' },
+    })
+    await act(async () => {
+      fireEvent.submit(root.querySelector('.modal')!)
+    })
+    expect(app.state.tasks[0]?.note).toBe('Ask about the boiler')
+  })
+
+  it('shows the description under the title, not in it', async () => {
+    const { root } = await mount('Buy milk desc:"from the corner shop"\n')
+    expect(root.querySelector('.task__text')?.textContent).toBe('Buy milk')
+    expect(root.querySelector('.task__note')?.textContent).toBe('from the corner shop')
+  })
+})

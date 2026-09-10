@@ -1,5 +1,5 @@
 import type { Task } from './types'
-import { parseLine, normalizeLine } from './parse'
+import { parseLine, normalizeLine, NOTE_RE } from './parse'
 import { formatTask } from './format'
 
 function pairPattern(key: string): RegExp {
@@ -63,4 +63,12 @@ export function addAttachment(task: Task, id: string): Task {
 export function removeAttachment(task: Task, id: string): Task {
   const re = new RegExp(`(?:^|\\s)file:${id}(?=\\s|$)`)
   return reparse({ ...task, description: normalizeLine(task.description.replace(re, '')) })
+}
+
+export function setNote(task: Task, note: string): Task {
+  const without = normalizeLine(task.description.replace(NOTE_RE, ''))
+  // A quote would end the word early, and no note is worth breaking the line for.
+  const text = note.trim().replace(/"/g, "'")
+  const description = text.length > 0 ? `${without} desc:"${text}"`.trim() : without
+  return reparse({ ...task, description })
 }

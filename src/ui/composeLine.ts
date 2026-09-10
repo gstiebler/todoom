@@ -3,12 +3,13 @@ export interface Draft {
   priority: string | null
   due: string | null
   rec: string | null
+  note: string
   labels: string[]
   attachments: string[]
 }
 
 export function emptyDraft(): Draft {
-  return { text: '', priority: null, due: null, rec: null, labels: [], attachments: [] }
+  return { text: '', priority: null, due: null, rec: null, note: '', labels: [], attachments: [] }
 }
 
 function hasPair(text: string, key: string): boolean {
@@ -30,6 +31,8 @@ export function composeLine(draft: Draft): string {
   }
   if (draft.due && !hasPair(text, 'due')) parts.push(`due:${draft.due}`)
   if (draft.rec && !hasPair(text, 'rec')) parts.push(`rec:${draft.rec}`)
+  const note = draft.note.trim().replace(/"/g, "'")
+  if (note.length > 0 && !hasPair(text, 'desc')) parts.push(`desc:"${note}"`)
   for (const id of draft.attachments) {
     if (!words.includes(`file:${id}`)) parts.push(`file:${id}`)
   }

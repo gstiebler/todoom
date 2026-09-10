@@ -277,6 +277,29 @@ body {
   font: inherit;
 }
 
+/* Name and description read as one written line, the way the composer looks in
+   the app this borrows from: no boxes, just text. */
+.add-input {
+  border: none;
+  background: none;
+  padding: 2px 0;
+  font-size: 16px;
+}
+
+.add-input:focus { outline: none; }
+
+.add-description {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  padding: 2px 0 6px;
+}
+
+.add-description:focus { outline: none; }
+
 .popover__search { display: block; width: calc(100% - 20px); margin: 10px; }
 
 button {
@@ -417,6 +440,13 @@ button:hover { border-color: var(--accent); }
 .task--overdue .task__due { color: var(--overdue); }
 .task--today .task__due { color: var(--today); }
 .task--soon .task__due { color: var(--soon); }
+
+.task__note {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 
 .task__attach {
   display: inline-flex;

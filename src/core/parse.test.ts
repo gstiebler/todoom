@@ -150,3 +150,19 @@ describe('attachments', () => {
     expect(parseLine('Buy milk file:').attachments).toEqual([])
   })
 })
+
+describe('description note', () => {
+  it('reads a quoted desc word', () => {
+    expect(parseLine('Buy milk desc:"Ask about the boiler"').note).toBe('Ask about the boiler')
+  })
+
+  it('has no note without a desc word', () => {
+    expect(parseLine('Buy milk').note).toBeUndefined()
+  })
+
+  it('keeps a quoted desc out of the key:value pairs', () => {
+    expect(parseLine('Buy milk desc:"two words" due:2026-09-12').pairs).toEqual({
+      due: '2026-09-12',
+    })
+  })
+})

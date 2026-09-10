@@ -62,3 +62,17 @@ describe('attachments', () => {
     )
   })
 })
+
+describe('description', () => {
+  it('appends the note as a quoted desc word', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk', note: 'from the corner shop' })).toBe(
+      'Buy milk desc:"from the corner shop"',
+    )
+  })
+
+  it('leaves a desc the text already carries alone', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk desc:"typed"', note: 'chip' })).toBe(
+      'Buy milk desc:"typed"',
+    )
+  })
+})

@@ -5,6 +5,8 @@ export interface Task {
   completionDate?: string
   creationDate?: string
   description: string
+  /** The Description field: the free text of a desc:"..." word, if there is one. */
+  note?: string
   projects: string[]
   contexts: string[]
   attachments: string[]

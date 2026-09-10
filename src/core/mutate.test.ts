@@ -7,6 +7,7 @@ import {
   removePair,
   addAttachment,
   removeAttachment,
+  setNote,
 } from './mutate'
 import { parseLine } from './parse'
 import { formatTask } from './format'
@@ -116,5 +117,29 @@ describe('attachments', () => {
   it('removes only the named file id', () => {
     const task = parseLine('Buy milk file:aaa file:bbb')
     expect(removeAttachment(task, 'aaa').raw).toBe('Buy milk file:bbb')
+  })
+})
+
+describe('setNote', () => {
+  it('adds a quoted desc word', () => {
+    expect(setNote(parseLine('Buy milk'), 'Ask about the boiler').raw).toBe(
+      'Buy milk desc:"Ask about the boiler"',
+    )
+  })
+
+  it('replaces the note it already had', () => {
+    expect(setNote(parseLine('Buy milk desc:"old" due:2026-09-12'), 'new').raw).toBe(
+      'Buy milk due:2026-09-12 desc:"new"',
+    )
+  })
+
+  it('drops the word when the note is emptied', () => {
+    expect(setNote(parseLine('Buy milk desc:"old"'), '  ').raw).toBe('Buy milk')
+  })
+
+  it('replaces a quote inside the note so the word still parses', () => {
+    expect(parseLine(setNote(parseLine('Buy milk'), 'the "big" one').raw).note).toBe(
+      "the 'big' one",
+    )
   })
 })

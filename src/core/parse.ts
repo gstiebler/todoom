@@ -4,8 +4,11 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const PRIORITY_RE = /^\(([A-Z])\) /
 const PROJECT_RE = /(?:^|\s)\+(\S+)/g
 const CONTEXT_RE = /(?:^|\s)@(\S+)/g
+/** The one word whose value may hold spaces, which is why it is quoted. */
+export const NOTE_RE = /(?:^|\s)desc:"([^"]*)"(?=\s|$)/
 const ATTACHMENT_RE = /(?:^|\s)file:([A-Za-z0-9_-]+)(?=\s|$)/g
-const PAIR_RE = /(?:^|\s)([A-Za-z0-9_-]+):([^\s:/][^\s:]*)(?=\s|$)/g
+// A quoted value is a desc: note, not a pair, so it stays out of the value grammar.
+const PAIR_RE = /(?:^|\s)([A-Za-z0-9_-]+):([^\s:/"][^\s:]*)(?=\s|$)/g
 
 export function normalizeLine(line: string): string {
   return line.trim().replace(/\s+/g, ' ')
@@ -53,6 +56,7 @@ export function parseLine(line: string): Task {
     completionDate,
     creationDate,
     description,
+    note: NOTE_RE.exec(description)?.[1],
     projects: collect(description, PROJECT_RE),
     contexts: collect(description, CONTEXT_RE),
     attachments: collect(description, ATTACHMENT_RE),

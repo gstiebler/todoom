@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import type { Task } from '../core/types'
 import type { TodoomApp } from '../app/state'
 import { formatTask } from '../core/format'
+import { NOTE_RE } from '../core/parse'
 import { describeTask } from './describeTask'
 import { AttachmentsPopover } from './AttachmentsPopover'
 import { CalendarIcon, PaperclipIcon, RepeatIcon, TagIcon } from './icons'
@@ -11,6 +12,7 @@ import { CalendarIcon, PaperclipIcon, RepeatIcon, TagIcon } from './icons'
 // the key:value pairs all reappear below it, in the meta row.
 function title(task: Task): string {
   const words = task.description
+    .replace(NOTE_RE, ' ')
     .split(' ')
     .filter((word) => !/^[+@]\S/.test(word) && !/^(due|rec|pri|file):/.test(word))
   return words.join(' ').trim() || task.description
@@ -82,6 +84,8 @@ const TaskRow = observer(function TaskRow({
             }}
           />
         )}
+
+        {task.note && <p className="task__note">{task.note}</p>}
 
         {(dueLabel || rec || task.projects.length > 0 || task.contexts.length > 0) && (
           <div className="task__meta">

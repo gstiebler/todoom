@@ -259,7 +259,7 @@ describe('attachments', () => {
 
   it('lists the folder once at load and knows the names', async () => {
     const { app, store, workspace } = await setup()
-    await store.uploadFile(workspace.folder, upload('notes.txt'))
+    await store.uploadFile(workspace.attachments, upload('notes.txt'))
     await app.loadAttachments()
     const names = [...app.attachmentsById.values()].map((entry) => entry.name)
     expect(names).toContain('notes.txt')

@@ -83,19 +83,25 @@ export class FakeStore implements TodoStore {
    * The workspace a seeded fake stands for: a Todoom folder holding the seeded
    * files, which is where the real app keeps them.
    */
-  async workspace(todo = 'todo.txt'): Promise<{ folder: FileRef; todo: FileRef }> {
+  async workspace(
+    todo = 'todo.txt',
+  ): Promise<{ folder: FileRef; todo: FileRef; attachments: FileRef }> {
     const folder = await this.findOrCreateFolder('Todoom')
     for (const entry of this.live()) {
       if (!entry.isFolder && entry.parent === 'root') entry.parent = folder.id
     }
-    return { folder, todo: this.refFor(todo) }
+    const attachments = await this.findOrCreateFolder('attachments', folder)
+    return { folder, todo: this.refFor(todo), attachments }
   }
 
-  async findOrCreateFolder(name: string): Promise<FileRef> {
+  async findOrCreateFolder(name: string, parent?: FileRef): Promise<FileRef> {
+    const under = parent?.id ?? 'root'
     for (const entry of this.live()) {
-      if (entry.isFolder && entry.name === name) return { id: entry.id, name: entry.name }
+      if (entry.isFolder && entry.name === name && entry.parent === under) {
+        return { id: entry.id, name: entry.name }
+      }
     }
-    const created = this.newEntry(name, 'root', true)
+    const created = this.newEntry(name, under, true)
     this.files.set(created.id, created)
     return { id: created.id, name: created.name }
   }

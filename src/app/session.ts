@@ -3,10 +3,11 @@ import type { TodoomApp } from './state'
 
 const KEY = 'todoom.workspace'
 
-/** The Todoom folder in Drive and the todo file inside it. */
+/** The Todoom folder in Drive, the todo file in it, and the attachments folder. */
 export interface Workspace {
   folder: FileRef
   todo: FileRef
+  attachments: FileRef
 }
 
 export function saveWorkspace(workspace: Workspace): void {
@@ -26,9 +27,9 @@ export function loadWorkspace(): Workspace | null {
   const raw = localStorage.getItem(KEY)
   if (!raw) return null
   try {
-    const parsed = JSON.parse(raw) as { folder?: unknown; todo?: unknown }
-    if (isRef(parsed.folder) && isRef(parsed.todo)) {
-      return { folder: parsed.folder, todo: parsed.todo }
+    const parsed = JSON.parse(raw) as { folder?: unknown; todo?: unknown; attachments?: unknown }
+    if (isRef(parsed.folder) && isRef(parsed.todo) && isRef(parsed.attachments)) {
+      return { folder: parsed.folder, todo: parsed.todo, attachments: parsed.attachments }
     }
     return null
   } catch {
@@ -47,7 +48,8 @@ export async function openWorkspace(
   if (saved) return saved
   const folder = await store.findOrCreateFolder('Todoom')
   const todo = await store.findOrCreateFileIn(folder, 'todo.txt')
-  const workspace = { folder, todo }
+  const attachments = await store.findOrCreateFolder('attachments', folder)
+  const workspace = { folder, todo, attachments }
   saveWorkspace(workspace)
   return workspace
 }

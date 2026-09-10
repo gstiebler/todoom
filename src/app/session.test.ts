@@ -18,6 +18,7 @@ describe('workspace persistence', () => {
   const workspace = {
     folder: { id: 'fol', name: 'Todoom' },
     todo: { id: 'abc', name: 'todo.txt' },
+    attachments: { id: 'att', name: 'attachments' },
   }
 
   it('returns null when nothing is stored', () => {
@@ -55,7 +56,26 @@ describe('workspace persistence', () => {
     expect(opened.todo.name).toBe('todo.txt')
     expect(await store.listFiles(opened.folder)).toEqual([
       expect.objectContaining({ id: opened.todo.id, name: 'todo.txt' }),
+      expect.objectContaining({ id: opened.attachments.id, name: 'attachments' }),
     ])
+  })
+
+  it('puts the attachments folder inside the Todoom folder', async () => {
+    const store = new FakeStore()
+    await store.signIn()
+
+    const opened = await openWorkspace(store)
+
+    expect(opened.attachments.name).toBe('attachments')
+    expect(await store.listFiles(opened.attachments)).toEqual([])
+  })
+
+  it('ignores a workspace remembered before attachments had their own folder', () => {
+    localStorage.setItem(
+      'todoom.workspace',
+      JSON.stringify({ folder: workspace.folder, todo: workspace.todo }),
+    )
+    expect(loadWorkspace()).toBeNull()
   })
 
   it('remembers the workspace instead of asking Drive again', async () => {

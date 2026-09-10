@@ -334,7 +334,7 @@ describe('attaching while composing', () => {
     fireEvent.click(chip(root, 'Attach'))
     pick(root, 'spec.pdf')
     fireEvent.click(root.querySelector('.modal-cancel')!)
-    const files = await store.listFiles(app.folder)
+    const files = await store.listFiles(app.attachmentsFolder)
     expect(files.map((f) => f.name)).not.toContain('spec.pdf')
   })
 })

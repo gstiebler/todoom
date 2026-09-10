@@ -19,7 +19,7 @@ export interface TodoStore {
   isSignedIn(): boolean
   signIn(): Promise<void>
   signOut(): void
-  findOrCreateFolder(name: string): Promise<FileRef>
+  findOrCreateFolder(name: string, parent?: FileRef): Promise<FileRef>
   findOrCreateFileIn(parent: FileRef, name: string): Promise<FileRef>
   uploadFile(parent: FileRef, file: File): Promise<DriveEntry>
   listFiles(parent: FileRef): Promise<DriveEntry[]>

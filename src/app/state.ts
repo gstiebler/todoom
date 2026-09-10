@@ -71,7 +71,7 @@ export class TodoomApp {
 
   /** Names and links for the attachments, read from the folder in one call. */
   async loadAttachments(): Promise<void> {
-    const entries = await this.store.listFiles(this.folder)
+    const entries = await this.store.listFiles(this.attachmentsFolder)
     runInAction(() => {
       for (const entry of entries) this.attachmentsById.set(entry.id, entry)
     })
@@ -79,7 +79,7 @@ export class TodoomApp {
 
   /** Uploads each file to the Todoom folder and returns its Drive id. */
   async uploadFiles(files: File[]): Promise<string[]> {
-    const folder = this.folder
+    const folder = this.attachmentsFolder
     const entries: DriveEntry[] = []
     for (const file of files) entries.push(await this.store.uploadFile(folder, file))
     runInAction(() => {
@@ -130,6 +130,11 @@ export class TodoomApp {
       })
     }
     await this.save()
+  }
+
+  /** The Todoom/attachments folder every uploaded file lands in. */
+  get attachmentsFolder(): FileRef {
+    return this.requireWorkspace().attachments
   }
 
   async load(workspace: Workspace): Promise<void> {

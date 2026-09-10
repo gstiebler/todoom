@@ -118,11 +118,12 @@ export class GoogleDriveStore implements TodoStore {
     return entryOf((await response.json()) as DriveFile)
   }
 
-  async findOrCreateFolder(name: string): Promise<FileRef> {
+  async findOrCreateFolder(name: string, parent?: FileRef): Promise<FileRef> {
     // The mime type is part of the question: a plain file called Todoom must
     // not be mistaken for the folder.
-    const found = await this.findIn('root', name, FOLDER_MIME)
-    const entry = found ?? (await this.create(name, 'root', FOLDER_MIME))
+    const under = parent?.id ?? 'root'
+    const found = await this.findIn(under, name, FOLDER_MIME)
+    const entry = found ?? (await this.create(name, under, FOLDER_MIME))
     return { id: entry.id, name: entry.name }
   }
 

@@ -161,14 +161,16 @@ export class TodoomApp {
 
   async archive(): Promise<number> {
     const ref = this.requireRef()
-    const { keep, archive } = splitCompleted(this.state.tasks)
+    const { archive } = splitCompleted(this.state.tasks)
     if (archive.length === 0) return 0
 
     const done = await this.store.findOrCreateSibling(ref, 'done.txt')
     const existing = (await this.store.read(done)).text
     await this.store.write(done, existing + formatFile(archive))
 
-    this.state.tasks = keep
+    const archivedTasks = new Set(archive)
+    this.state.tasks = this.state.tasks.filter((task) => !archivedTasks.has(task))
+    this.revision += 1
     this.state.saveState = 'dirty'
     await this.save()
     if (isErrorState(this.state)) {

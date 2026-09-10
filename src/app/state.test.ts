@@ -195,6 +195,20 @@ describe('archive', () => {
     const done = await store.findOrCreateSibling(ref, 'done.txt')
     expect((await store.read(done)).text).toBe('x 2026-09-09 b\n')
   })
+
+  it('preserves an edit made while the archive write is in flight', async () => {
+    const { app, store, ref } = await setup('a\nx 2026-09-09 b\n')
+    const gate = store.holdNextWrite()
+
+    const archivePromise = app.archive()
+    await gate.writeStarted
+    app.editTask(0, 'a, edited mid-archive')
+    gate.release()
+
+    await expect(archivePromise).resolves.toBe(1)
+    expect(app.state.tasks.map(formatTask)).toEqual(['a, edited mid-archive'])
+    expect((await store.read(ref)).text).toBe('a, edited mid-archive\n')
+  })
 })
 
 describe('subscribe', () => {

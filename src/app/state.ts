@@ -34,18 +34,30 @@ export class TodoomApp {
   private listeners = new Set<() => void>()
   private ref: FileRef | null = null
   private revision = 0
+  private version = 0
 
   constructor(
     private store: TodoStore,
     private today: () => string,
   ) {}
 
-  subscribe(listener: () => void): () => void {
+  // Bound so React's useSyncExternalStore sees a stable pair and does not
+  // resubscribe on every render.
+  subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
   }
 
+  // `state` is mutated in place, so its identity never changes and cannot tell
+  // a renderer that anything happened. This counter can. It is not `revision`,
+  // which tracks unsaved edits for the save/conflict logic and deliberately
+  // stays put on setFilter and load.
+  getVersion = (): number => this.version
+
   private notify(): void {
+    this.version += 1
     for (const listener of this.listeners) listener()
   }
 

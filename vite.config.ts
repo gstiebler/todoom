@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts', 'worker/**/*.test.ts'],
+    include: ['src/**/*.test.ts?(x)', 'worker/**/*.test.ts'],
     environmentMatchGlobs: [
       ['src/ui/**', 'jsdom'],
       ['src/app/session.test.ts', 'jsdom'],

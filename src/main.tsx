@@ -1,8 +1,10 @@
 import './ui/styles.css'
+import { createRoot } from 'react-dom/client'
 import { TodoomApp } from './app/state'
 import { GoogleDriveStore } from './drive/googleStore'
 import type { FileRef, TodoStore } from './drive/store'
-import { render } from './ui/render'
+import { App } from './ui/App'
+import { SignIn } from './ui/SignIn'
 import { filterFromQuery } from './app/urlState'
 import { syncFilterHistory } from './app/urlHistory'
 import { clearFileRef, createDebouncedSaver, loadOrCreateTodoFile } from './app/session'
@@ -11,6 +13,8 @@ import { SignedOutError } from './drive/tokens'
 const root = document.querySelector<HTMLDivElement>('#app')
 if (!root) throw new Error('missing #app element')
 
+const reactRoot = createRoot(root)
+
 function todayIso(): string {
   const now = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -18,21 +22,7 @@ function todayIso(): string {
 }
 
 function showSignIn(message: string, actions: Array<[string, () => void]>): void {
-  root!.textContent = ''
-  const panel = document.createElement('div')
-  panel.className = 'signin'
-  const title = document.createElement('h1')
-  title.textContent = 'Todoom'
-  const text = document.createElement('p')
-  text.textContent = message
-  panel.append(title, text)
-  for (const [label, onClick] of actions) {
-    const button = document.createElement('button')
-    button.textContent = label
-    button.addEventListener('click', onClick)
-    panel.appendChild(button)
-  }
-  root!.appendChild(panel)
+  reactRoot.render(<SignIn message={message} actions={actions} />)
 }
 
 function start(store: TodoStore, ref: FileRef): void {
@@ -47,26 +37,15 @@ function start(store: TodoStore, ref: FileRef): void {
     lastSyncedFilter = app.state.filter
   }
 
-  const draw = () => {
-    render(root!, app, todayIso())
-    syncUrl()
-  }
-
-  // render.ts re-renders itself after UI-driven mutations (it closes over
-  // root/app/today), so this subscription only needs to keep the URL and
-  // autosave timer in sync with every state change, not force another
-  // render — that would double-render and fight render.ts's own focus
-  // restoration in the search box.
+  // App subscribes to the same store, so every mutation already redraws.
+  // This subscription only keeps the URL and the autosave timer in step.
   app.subscribe(() => {
     if (app.state.saveState === 'dirty') saver.schedule()
     syncUrl()
   })
 
-  // Back/forward changes the query string without going through render.ts's
-  // own handlers, so this path does need an explicit render.
   window.addEventListener('popstate', () => {
     app.setFilter(filterFromQuery(window.location.search))
-    draw()
   })
 
   window.addEventListener('blur', () => void saver.flush())
@@ -74,7 +53,7 @@ function start(store: TodoStore, ref: FileRef): void {
     if (document.visibilityState === 'hidden') void saver.flush()
   })
   window.addEventListener('focus', () => {
-    void app.refreshIfClean().then(draw)
+    void app.refreshIfClean()
   })
   window.addEventListener('beforeunload', (event) => {
     if (app.state.saveState === 'dirty' || app.state.saveState === 'saving') {
@@ -85,7 +64,9 @@ function start(store: TodoStore, ref: FileRef): void {
 
   app
     .load(ref)
-    .then(draw)
+    .then(() => {
+      reactRoot.render(<App app={app} today={todayIso} />)
+    })
     .catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('404')) {

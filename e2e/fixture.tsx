@@ -1,7 +1,8 @@
 import '../src/ui/styles.css'
+import { createRoot } from 'react-dom/client'
 import { TodoomApp } from '../src/app/state'
 import { FakeStore } from '../src/drive/fakeStore'
-import { render } from '../src/ui/render'
+import { App } from '../src/ui/App'
 
 const TODAY = '2026-09-10'
 
@@ -16,11 +17,10 @@ async function main(): Promise<void> {
   const app = new TodoomApp(store, () => TODAY)
   await app.load(store.refFor('todo.txt'))
 
-  const draw = () => render(root, app, TODAY)
   app.subscribe(() => {
     void app.save()
   })
-  draw()
+  createRoot(root).render(<App app={app} today={() => TODAY} />)
 }
 
 void main()

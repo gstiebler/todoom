@@ -11,9 +11,15 @@ test('lists seeded tasks in priority order', async ({ page }) => {
 
 test('adds a task', async ({ page }) => {
   await page.goto(PAGE)
+  await page.getByRole('button', { name: '+ Add task' }).click()
   await page.fill('.add-input', 'Water plants @home')
+  await page.getByRole('button', { name: 'Priority' }).click()
+  await page.getByRole('button', { name: '(B)' }).click()
   await page.press('.add-input', 'Enter')
+  await expect(page.locator('.modal')).toHaveCount(0)
   await expect(page.locator('.task')).toHaveCount(3)
+  // The (B) chosen in the modal reaches the file, so a (B) filter chip appears.
+  await expect(page.locator('.sidebar .chip', { hasText: '(B)' })).toBeVisible()
   await expect(page.locator('.task', { hasText: 'Water plants' })).toBeVisible()
 })
 

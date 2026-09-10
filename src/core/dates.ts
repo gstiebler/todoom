@@ -57,3 +57,11 @@ export function daysBetween(from: string, to: string): number {
   const tb = Date.UTC(b[0], b[1] - 1, b[2])
   return Math.round((tb - ta) / 86400000)
 }
+
+// 0 = Monday … 6 = Sunday, matching the calendar grid the UI draws.
+export function weekday(iso: string): number {
+  const p = parts(iso)
+  if (!p) throw new Error(`invalid date: ${iso}`)
+  const day = new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay()
+  return (day + 6) % 7
+}

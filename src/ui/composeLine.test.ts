@@ -1,0 +1,50 @@
+import { describe, it, expect } from 'vitest'
+import { composeLine, emptyDraft } from './composeLine'
+
+describe('composeLine', () => {
+  it('passes plain text through', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk' })).toBe('Buy milk')
+  })
+
+  it('prepends the chosen priority', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk', priority: 'A' })).toBe('(A) Buy milk')
+  })
+
+  it('appends the chosen due date', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk', due: '2026-09-12' })).toBe(
+      'Buy milk due:2026-09-12',
+    )
+  })
+
+  it('appends the chosen labels', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk', labels: ['+groceries', '@shop'] })).toBe(
+      'Buy milk +groceries @shop',
+    )
+  })
+
+  it('appends the chosen repeat', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Pay rent', rec: '1m' })).toBe('Pay rent rec:1m')
+  })
+
+  it('lets a typed priority win over the chip', () => {
+    expect(composeLine({ ...emptyDraft(), text: '(B) Buy milk', priority: 'A' })).toBe(
+      '(B) Buy milk',
+    )
+  })
+
+  it('lets a typed due date win over the chip', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk due:2026-10-01', due: '2026-09-12' })).toBe(
+      'Buy milk due:2026-10-01',
+    )
+  })
+
+  it('does not repeat a label already typed', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk +groceries', labels: ['+groceries'] })).toBe(
+      'Buy milk +groceries',
+    )
+  })
+
+  it('trims surrounding whitespace', () => {
+    expect(composeLine({ ...emptyDraft(), text: '  Buy milk  ' })).toBe('Buy milk')
+  })
+})

@@ -16,6 +16,17 @@ async function mount(seed: string) {
   return { app, root: container, store }
 }
 
+// The modal is the only way in, so every add-a-task case opens it first.
+function type_(root: HTMLElement, text: string): void {
+  if (!root.querySelector('.modal')) fireEvent.click(root.querySelector('.add-task')!)
+  fireEvent.change(root.querySelector('.add-input')!, { target: { value: text } })
+}
+
+function chip(root: HTMLElement, name: string): Element {
+  if (!root.querySelector('.modal')) fireEvent.click(root.querySelector('.add-task')!)
+  return [...root.querySelectorAll('.modal-chip')].find((c) => c.textContent?.startsWith(name))!
+}
+
 function labels(root: HTMLElement): string[] {
   return [...root.querySelectorAll('.chip')].map((c) => c.textContent ?? '')
 }
@@ -55,20 +66,75 @@ describe('App', () => {
     expect(app.state.tasks[0]?.completed).toBe(true)
   })
 
-  it('adds a task when the form is submitted', async () => {
+  it('adds a task from the modal', async () => {
     const { root, app } = await mount('')
-    fireEvent.change(root.querySelector('.add-input')!, { target: { value: 'Call plumber' } })
-    fireEvent.submit(root.querySelector('.add-form')!)
+    type_(root, 'Call plumber')
+    fireEvent.submit(root.querySelector('.modal')!)
     expect(app.state.tasks).toHaveLength(1)
     expect(app.state.tasks[0]?.description).toBe('Call plumber')
   })
 
-  it('clears the add box after submitting', async () => {
+  it('closes the modal after submitting', async () => {
     const { root } = await mount('')
-    const input = root.querySelector<HTMLInputElement>('.add-input')!
-    fireEvent.change(input, { target: { value: 'Call plumber' } })
-    fireEvent.submit(root.querySelector('.add-form')!)
-    expect(input.value).toBe('')
+    type_(root, 'Call plumber')
+    fireEvent.submit(root.querySelector('.modal')!)
+    expect(root.querySelector('.modal')).toBeNull()
+  })
+
+  it('appends the date chosen in the date popover', async () => {
+    const { root, app } = await mount('')
+    type_(root, 'Call plumber')
+    fireEvent.click(chip(root, 'Date'))
+    fireEvent.click(root.querySelectorAll('.quick-date')[0]!)
+    fireEvent.submit(root.querySelector('.modal')!)
+    expect(app.state.tasks[0]?.pairs['due']).toBe(TODAY)
+  })
+
+  it('leaves a date typed into the text alone', async () => {
+    const { root, app } = await mount('')
+    type_(root, 'Call plumber due:2026-10-01')
+    fireEvent.click(chip(root, 'Date'))
+    fireEvent.click(root.querySelectorAll('.quick-date')[0]!)
+    fireEvent.submit(root.querySelector('.modal')!)
+    expect(app.state.tasks[0]?.pairs['due']).toBe('2026-10-01')
+    expect(app.state.tasks[0]?.raw).not.toContain(`due:${TODAY}`)
+  })
+
+  it('prepends the priority chosen in the priority popover', async () => {
+    const { root, app } = await mount('')
+    type_(root, 'Call plumber')
+    fireEvent.click(chip(root, 'Priority'))
+    fireEvent.click(root.querySelectorAll('.priority')[0]!)
+    fireEvent.submit(root.querySelector('.modal')!)
+    expect(app.state.tasks[0]?.priority).toBe('A')
+  })
+
+  it('appends a label ticked in the labels popover', async () => {
+    const { root, app } = await mount('Buy milk +groceries\n')
+    fireEvent.click(root.querySelector('.add-task')!)
+    type_(root, 'Buy eggs')
+    fireEvent.click(chip(root, 'Labels'))
+    fireEvent.click(root.querySelector('.label-option input')!)
+    fireEvent.submit(root.querySelector('.modal')!)
+    expect(app.state.tasks.find((t) => t.description.startsWith('Buy eggs'))?.projects).toEqual([
+      'groceries',
+    ])
+  })
+
+  it('adds nothing when the modal is dismissed with Escape', async () => {
+    const { root, app } = await mount('')
+    type_(root, 'Call plumber')
+    fireEvent.keyDown(root.querySelector('.modal')!, { key: 'Escape' })
+    expect(root.querySelector('.modal')).toBeNull()
+    expect(app.state.tasks).toHaveLength(0)
+  })
+
+  it('closes only the popover on the first Escape', async () => {
+    const { root } = await mount('')
+    fireEvent.click(chip(root, 'Date'))
+    fireEvent.keyDown(root.querySelector('.modal')!, { key: 'Escape' })
+    expect(root.querySelector('.popover')).toBeNull()
+    expect(root.querySelector('.modal')).not.toBeNull()
   })
 
   it('deletes a task when the delete button is clicked', async () => {
@@ -181,7 +247,7 @@ describe('sidebar layout', () => {
     expect(root.querySelector('.sidebar .search')).not.toBeNull()
     expect(root.querySelector('.sidebar .chip')?.textContent).toBe('+house')
     expect(root.querySelector('.sidebar .archive-btn')).not.toBeNull()
-    expect(root.querySelector('.main .add-form')).not.toBeNull()
+    expect(root.querySelector('.main .add-task')).not.toBeNull()
     expect(root.querySelector('.main .task-list')).not.toBeNull()
   })
 

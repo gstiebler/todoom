@@ -71,10 +71,200 @@ body {
 .status--error { color: var(--overdue); }
 .status__retry { padding: 3px 9px; font-size: 13px; }
 
-.add-form { display: flex; gap: 8px; margin-bottom: 20px; }
+.add-task {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 8px 0;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
 
-.add-input, .search, .task__editor {
-  flex: 1;
+.add-task:hover { color: var(--accent); }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+  display: flex;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+  z-index: 10;
+}
+
+.modal {
+  position: relative;
+  width: min(620px, 100%);
+  align-self: start;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 35%);
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.modal-chip { font-size: 13px; padding: 5px 10px; }
+
+.modal-chip--set {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.modal-actions { margin-left: auto; display: flex; gap: 6px; }
+
+.modal-cancel {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  padding: 0 8px;
+}
+
+.modal-submit {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  padding: 6px 14px;
+}
+
+.modal-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Popovers hang below the chip row, inside the modal's own stacking context. */
+.popover {
+  position: absolute;
+  top: 100%;
+  left: 14px;
+  margin-top: -4px;
+  width: min(340px, calc(100% - 28px));
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 35%);
+  overflow: hidden;
+}
+
+.popover--priority { display: flex; gap: 6px; padding: 10px; width: auto; }
+
+.priority { font-size: 13px; padding: 5px 10px; }
+
+.priority--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.quick-dates { list-style: none; margin: 0; padding: 6px; border-bottom: 1px solid var(--border); }
+
+.quick-date {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 7px 10px;
+  border-radius: 6px;
+}
+
+.quick-date:hover { background: var(--surface); }
+.quick-date--active { color: var(--accent); font-weight: 600; }
+.quick-date__day { color: var(--muted); }
+
+.calendar { padding: 10px; }
+
+.calendar__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.calendar__head button {
+  border: none;
+  background: none;
+  padding: 2px 8px;
+  font-size: 16px;
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+
+.calendar__weekday { color: var(--muted); font-size: 11px; padding-bottom: 4px; }
+
+.calendar__day {
+  border: none;
+  background: none;
+  padding: 6px 0;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.calendar__day:hover { background: var(--surface); }
+.calendar__day--today { color: var(--today); font-weight: 700; }
+
+.calendar__day--active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.popover__footer {
+  border-top: 1px solid var(--border);
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.repeats { display: flex; flex-wrap: wrap; gap: 6px; }
+.repeat { font-size: 12px; padding: 4px 8px; }
+
+.repeat--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.popover__clear {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.popover__empty { color: var(--muted); font-size: 13px; margin: 0 10px 10px; }
+
+.label-list { list-style: none; margin: 0; padding: 0 6px 6px; max-height: 260px; overflow-y: auto; }
+
+.label-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.label-option:hover { background: var(--surface); }
+
+.add-input, .search, .task__editor, .popover__search {
+  width: 100%;
   padding: 9px 11px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -82,6 +272,8 @@ body {
   color: var(--fg);
   font: inherit;
 }
+
+.popover__search { display: block; width: calc(100% - 20px); margin: 10px; }
 
 button {
   padding: 9px 13px;

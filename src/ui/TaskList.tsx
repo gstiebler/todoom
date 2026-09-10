@@ -4,14 +4,15 @@ import type { Task } from '../core/types'
 import type { TodoomApp } from '../app/state'
 import { formatTask } from '../core/format'
 import { describeTask } from './describeTask'
-import { CalendarIcon, RepeatIcon, TagIcon } from './icons'
+import { AttachmentsPopover } from './AttachmentsPopover'
+import { CalendarIcon, PaperclipIcon, RepeatIcon, TagIcon } from './icons'
 
 // The title line is the description with the machinery taken out: the tags and
 // the key:value pairs all reappear below it, in the meta row.
 function title(task: Task): string {
   const words = task.description
     .split(' ')
-    .filter((word) => !/^[+@]\S/.test(word) && !/^(due|rec|pri):/.test(word))
+    .filter((word) => !/^[+@]\S/.test(word) && !/^(due|rec|pri|file):/.test(word))
   return words.join(' ').trim() || task.description
 }
 
@@ -34,6 +35,7 @@ const TaskRow = observer(function TaskRow({
   today: string
 }) {
   const [draft, setDraft] = useState<string | null>(null)
+  const [attachOpen, setAttachOpen] = useState(false)
   // Escape unmounts the editor, and an unmounted input must not commit whatever
   // it happened to be holding.
   const discarded = useRef(false)
@@ -106,9 +108,27 @@ const TaskRow = observer(function TaskRow({
         )}
       </div>
 
+      <button
+        className="task__attach"
+        title="Attachments"
+        onClick={() => setAttachOpen((open) => !open)}
+      >
+        <PaperclipIcon />
+        {task.attachments.length > 0 && task.attachments.length}
+      </button>
+
       <button className="task__delete" title="Delete" onClick={() => app.deleteTask(index)}>
         ×
       </button>
+
+      {attachOpen && (
+        <AttachmentsPopover
+          app={app}
+          index={index}
+          ids={task.attachments}
+          onClose={() => setAttachOpen(false)}
+        />
+      )}
     </li>
   )
 })

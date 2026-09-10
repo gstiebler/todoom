@@ -257,3 +257,54 @@ describe('sidebar layout', () => {
     expect(headings).toEqual([])
   })
 })
+
+describe('attachments', () => {
+  // A mounted app whose one task carries two file words, one of which Drive
+  // knows the name of and one of which it does not.
+  async function withAttachments() {
+    const mounted = await mount('Buy milk file:known file:gone\n')
+    await act(async () => {
+      mounted.app.attachmentsById.set('known', {
+        id: 'known',
+        name: 'spec.pdf',
+        webViewLink: 'https://drive.example/known',
+      })
+    })
+    return mounted
+  }
+
+  it('shows the attachment count on the row', async () => {
+    const { root } = await withAttachments()
+    expect(root.querySelector('.task__attach')?.textContent).toContain('2')
+  })
+
+  it('opens the popover with the file names', async () => {
+    const { root } = await withAttachments()
+    fireEvent.click(root.querySelector('.task__attach')!)
+    expect(root.querySelector('.popover--attachments')?.textContent).toContain('spec.pdf')
+  })
+
+  it('links an attachment to its Drive page in a new tab', async () => {
+    const { root } = await withAttachments()
+    fireEvent.click(root.querySelector('.task__attach')!)
+    const link = root.querySelector('.attachment__link') as HTMLAnchorElement
+    expect(link.href).toBe('https://drive.example/known')
+    expect(link.target).toBe('_blank')
+    expect(link.rel).toBe('noopener noreferrer')
+  })
+
+  it('shows a missing file as removable', async () => {
+    const { root } = await withAttachments()
+    fireEvent.click(root.querySelector('.task__attach')!)
+    const rows = [...root.querySelectorAll('.attachment')]
+    const missing = rows.find((row) => row.textContent?.includes('gone'))
+    expect(missing?.querySelector('.attachment__remove')).not.toBeNull()
+  })
+
+  it('closes the popover on Escape', async () => {
+    const { root } = await withAttachments()
+    fireEvent.click(root.querySelector('.task__attach')!)
+    fireEvent.keyDown(root.querySelector('.popover--attachments')!, { key: 'Escape' })
+    expect(root.querySelector('.popover--attachments')).toBeNull()
+  })
+})

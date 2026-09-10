@@ -350,6 +350,7 @@ button:hover { border-color: var(--accent); }
 .task-list { list-style: none; margin: 0; padding: 0; }
 
 .task {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -416,6 +417,48 @@ button:hover { border-color: var(--accent); }
 .task--overdue .task__due { color: var(--overdue); }
 .task--today .task__due { color: var(--today); }
 .task--soon .task__due { color: var(--soon); }
+
+.task__attach {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+.task__attach:hover { color: var(--accent); }
+
+/* Hangs off the row itself rather than the modal. */
+.popover--attachments { left: auto; right: 0; width: min(300px, 92%); z-index: 5; }
+
+.attachment-list { list-style: none; margin: 0; padding: 6px; }
+
+.attachment {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.attachment__link { color: var(--accent); overflow: hidden; text-overflow: ellipsis; }
+.attachment__missing { color: var(--muted); }
+
+.attachment__remove {
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 0 4px;
+  font-size: 15px;
+}
+
+.attachment__remove:hover { color: var(--overdue); }
+
+.popover__add { width: 100%; }
 
 .task__delete {
   border: none;

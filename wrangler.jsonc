@@ -3,6 +3,12 @@
   "name": "todoom",
   "main": "worker/index.ts",
   "compatibility_date": "2025-09-01",
+  "workers_dev": true,
+  // Every preview deployment would otherwise get its own hostname. Those are
+  // real origins serving the whole app, but no OAuth redirect URI is
+  // registered for them, so sign-in is broken there anyway — a public surface
+  // with no use.
+  "preview_urls": false,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

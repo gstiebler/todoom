@@ -1,14 +1,17 @@
-import type { FileRef, ReadResult, TodoStore } from './store'
+import type { DriveEntry, FileRef, ReadResult, TodoStore } from './store'
 import { backendTokens, SignedOutError, type TokenSource } from './tokens'
 
 const FILES = 'https://www.googleapis.com/drive/v3/files'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
+const FOLDER_MIME = 'application/vnd.google-apps.folder'
+const ENTRY_FIELDS = 'id,name,webViewLink'
 
 // Minimal shapes for the Drive REST API responses this file reads.
 
 interface DriveFile {
   id: string
   name: string
+  webViewLink?: string
 }
 
 interface DriveFileList {
@@ -27,6 +30,10 @@ interface DriveFileModifiedTime {
 // filename can never terminate the literal and inject clauses.
 function quoteForQuery(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+}
+
+function entryOf(file: DriveFile): DriveEntry {
+  return { id: file.id, name: file.name, webViewLink: file.webViewLink ?? '' }
 }
 
 export class GoogleDriveStore implements TodoStore {
@@ -139,6 +146,79 @@ export class GoogleDriveStore implements TodoStore {
     const found = json.files?.[0]
     if (found) return { id: found.id, name: found.name }
     return this.createFile(name, parent)
+  }
+
+  private async findIn(parent: string, name: string, mimeType?: string): Promise<DriveEntry | null> {
+    const query = [
+      `name = '${quoteForQuery(name)}'`,
+      'trashed = false',
+      `'${quoteForQuery(parent)}' in parents`,
+      mimeType ? `mimeType = '${quoteForQuery(mimeType)}'` : null,
+    ]
+      .filter((clause): clause is string => clause !== null)
+      .join(' and ')
+    const response = await this.request(
+      `${FILES}?q=${encodeURIComponent(query)}&fields=files(${ENTRY_FIELDS})&pageSize=1`,
+    )
+    const found = ((await response.json()) as DriveFileList).files?.[0]
+    return found ? entryOf(found) : null
+  }
+
+  private async create(name: string, parent: string, mimeType: string): Promise<DriveEntry> {
+    const response = await this.request(`${FILES}?fields=${ENTRY_FIELDS}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, mimeType, parents: [parent] }),
+    })
+    return entryOf((await response.json()) as DriveFile)
+  }
+
+  async findOrCreateFolder(name: string): Promise<FileRef> {
+    // The mime type is part of the question: a plain file called Todoom must
+    // not be mistaken for the folder.
+    const found = await this.findIn('root', name, FOLDER_MIME)
+    const entry = found ?? (await this.create(name, 'root', FOLDER_MIME))
+    return { id: entry.id, name: entry.name }
+  }
+
+  async findOrCreateFileIn(parent: FileRef, name: string): Promise<FileRef> {
+    const found = await this.findIn(parent.id, name)
+    const entry = found ?? (await this.create(name, parent.id, 'text/plain'))
+    return { id: entry.id, name: entry.name }
+  }
+
+  /**
+   * Two requests rather than one multipart body: the metadata creates the file,
+   * a media PATCH fills it. The extra round trip buys not hand-rolling a
+   * multipart/related envelope.
+   */
+  async uploadFile(parent: FileRef, file: File): Promise<DriveEntry> {
+    const mimeType = file.type || 'application/octet-stream'
+    const entry = await this.create(file.name, parent.id, mimeType)
+    await this.request(`${UPLOAD}/${entry.id}?uploadType=media`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': mimeType },
+      body: file,
+    })
+    return entry
+  }
+
+  async listFiles(parent: FileRef): Promise<DriveEntry[]> {
+    const query = [`'${quoteForQuery(parent.id)}' in parents`, 'trashed = false'].join(' and ')
+    const response = await this.request(
+      `${FILES}?q=${encodeURIComponent(query)}&fields=files(${ENTRY_FIELDS})&pageSize=1000`,
+    )
+    const files = ((await response.json()) as DriveFileList).files ?? []
+    return files.map(entryOf)
+  }
+
+  /** Trashed, not deleted: a detached file stays recoverable in Drive. */
+  async trashFile(id: string): Promise<void> {
+    await this.request(`${FILES}/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trashed: true }),
+    })
   }
 
   async read(ref: FileRef): Promise<ReadResult> {

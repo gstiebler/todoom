@@ -24,6 +24,27 @@ function driveReturns(...statuses: number[]): ReturnType<typeof vi.fn> {
   return spy
 }
 
+/** Answers each call with the next body, so a two-step operation can be asserted. */
+function driveBodies(...bodies: unknown[]): ReturnType<typeof vi.fn> {
+  let call = 0
+  const spy = vi.fn(async () => {
+    const body = bodies[Math.min(call, bodies.length - 1)] ?? {}
+    call += 1
+    return new Response(JSON.stringify(body), { status: 200 })
+  })
+  vi.stubGlobal('fetch', spy)
+  return spy
+}
+
+function urlOf(spy: ReturnType<typeof vi.fn>, call: number): string {
+  return String(spy.mock.calls[call]?.[0])
+}
+
+function bodyOf(spy: ReturnType<typeof vi.fn>, call: number): Record<string, unknown> {
+  const init = spy.mock.calls[call]?.[1] as RequestInit | undefined
+  return JSON.parse(String(init?.body)) as Record<string, unknown>
+}
+
 function bearerOf(spy: ReturnType<typeof vi.fn>, call: number): string | null {
   const init = spy.mock.calls[call]?.[1] as RequestInit | undefined
   return new Headers(init?.headers).get('Authorization')
@@ -89,5 +110,106 @@ describe('GoogleDriveStore authorization', () => {
     driveReturns(200)
     await store.signIn()
     expect(store.isSignedIn()).toBe(true)
+  })
+})
+
+describe('GoogleDriveStore folders', () => {
+  it('creates the folder at the root with the Drive folder mime type', async () => {
+    const drive = driveBodies({ files: [] }, { id: 'fol', name: 'Todoom' })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+
+    expect(await store.findOrCreateFolder('Todoom')).toEqual({ id: 'fol', name: 'Todoom' })
+    expect(bodyOf(drive, 1)).toEqual({
+      name: 'Todoom',
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: ['root'],
+    })
+  })
+
+  it('reuses a folder that is already there', async () => {
+    const drive = driveBodies({ files: [{ id: 'fol', name: 'Todoom' }] })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+
+    expect(await store.findOrCreateFolder('Todoom')).toEqual({ id: 'fol', name: 'Todoom' })
+    expect(drive).toHaveBeenCalledTimes(1)
+  })
+
+  it('looks for a folder by mime type, so a file of the same name is not mistaken for one', async () => {
+    const drive = driveBodies({ files: [{ id: 'fol', name: 'Todoom' }] })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+
+    await store.findOrCreateFolder('Todoom')
+    expect(decodeURIComponent(urlOf(drive, 0))).toContain(
+      "mimeType = 'application/vnd.google-apps.folder'",
+    )
+  })
+
+  it('scopes a file lookup to its parent folder', async () => {
+    const drive = driveBodies({ files: [] }, { id: 'f', name: 'todo.txt' })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+
+    await store.findOrCreateFileIn({ id: 'fol', name: 'Todoom' }, 'todo.txt')
+    expect(decodeURIComponent(urlOf(drive, 0))).toContain("'fol' in parents")
+    expect(bodyOf(drive, 1)['parents']).toEqual(['fol'])
+  })
+})
+
+describe('GoogleDriveStore attachments', () => {
+  const folder = { id: 'fol', name: 'Todoom' }
+  const file = () => new File(['hello'], 'notes.txt', { type: 'text/plain' })
+
+  it('uploads in two steps: the metadata, then the bytes', async () => {
+    const drive = driveBodies({ id: 'up', name: 'notes.txt', webViewLink: 'https://drive/up' })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+
+    await store.uploadFile(folder, file())
+
+    expect(urlOf(drive, 0)).toContain('/drive/v3/files?')
+    expect(bodyOf(drive, 0)).toEqual({
+      name: 'notes.txt',
+      mimeType: 'text/plain',
+      parents: ['fol'],
+    })
+    expect(urlOf(drive, 1)).toContain('/upload/drive/v3/files/up?uploadType=media')
+  })
+
+  it('returns the id, name and Drive link of the upload', async () => {
+    driveBodies({ id: 'up', name: 'notes.txt', webViewLink: 'https://drive/up' })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+
+    expect(await store.uploadFile(folder, file())).toEqual({
+      id: 'up',
+      name: 'notes.txt',
+      webViewLink: 'https://drive/up',
+    })
+  })
+
+  it('falls back to a generic mime type for a file the browser cannot name', async () => {
+    const drive = driveBodies({ id: 'up', name: 'blob', webViewLink: 'https://drive/up' })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+
+    await store.uploadFile(folder, new File(['x'], 'blob', { type: '' }))
+    expect(bodyOf(drive, 0)['mimeType']).toBe('application/octet-stream')
+  })
+
+  it('lists what is in the folder', async () => {
+    const drive = driveBodies({
+      files: [{ id: 'a', name: 'one.txt', webViewLink: 'https://drive/a' }],
+    })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+
+    expect(await store.listFiles(folder)).toEqual([
+      { id: 'a', name: 'one.txt', webViewLink: 'https://drive/a' },
+    ])
+    expect(decodeURIComponent(urlOf(drive, 0))).toContain("'fol' in parents")
+  })
+
+  it('trashes rather than deletes, so a mistake is recoverable', async () => {
+    const drive = driveBodies({})
+    const store = new GoogleDriveStore(tokenSource('tok'))
+
+    await store.trashFile('up')
+    expect(urlOf(drive, 0)).toContain('/drive/v3/files/up')
+    expect(bodyOf(drive, 0)).toEqual({ trashed: true })
   })
 })

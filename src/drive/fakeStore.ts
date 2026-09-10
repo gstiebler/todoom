@@ -1,10 +1,17 @@
-import type { FileRef, ReadResult, TodoStore } from './store'
+import type { DriveEntry, FileRef, ReadResult, TodoStore } from './store'
 
 interface Entry {
   id: string
   name: string
   text: string
   modifiedTime: string
+  parent: string
+  isFolder: boolean
+  trashed: boolean
+}
+
+function entryOf(entry: Entry): DriveEntry {
+  return { id: entry.id, name: entry.name, webViewLink: `https://drive.fake/${entry.id}` }
 }
 
 export class FakeStore implements TodoStore {
@@ -14,6 +21,7 @@ export class FakeStore implements TodoStore {
   private clock = 0
   private pendingWriteGate: { markStarted: () => void; releaseGate: Promise<void> } | null = null
   private failingWrites = new Set<string>()
+  private failingUploads = 0
 
   constructor(seed: Record<string, string> = {}) {
     for (const [name, text] of Object.entries(seed)) {
@@ -28,9 +36,21 @@ export class FakeStore implements TodoStore {
     return new Date(1_700_000_000_000 + this.clock).toISOString()
   }
 
-  private newEntry(name: string): Entry {
+  private newEntry(name: string, parent = 'root', isFolder = false): Entry {
     this.counter += 1
-    return { id: `fake-${this.counter}`, name, text: '', modifiedTime: this.stamp() }
+    return {
+      id: `fake-${this.counter}`,
+      name,
+      text: '',
+      modifiedTime: this.stamp(),
+      parent,
+      isFolder,
+      trashed: false,
+    }
+  }
+
+  private live(): Entry[] {
+    return [...this.files.values()].filter((entry) => !entry.trashed)
   }
 
   private require(ref: FileRef): Entry {
@@ -41,7 +61,7 @@ export class FakeStore implements TodoStore {
   }
 
   refFor(name: string): FileRef {
-    for (const entry of this.files.values()) {
+    for (const entry of this.live()) {
       if (entry.name === name) return { id: entry.id, name: entry.name }
     }
     throw new Error(`no seeded file named ${name}`)
@@ -60,7 +80,7 @@ export class FakeStore implements TodoStore {
   }
 
   async findOrCreateRootFile(name: string): Promise<FileRef> {
-    for (const entry of this.files.values()) {
+    for (const entry of this.live()) {
       if (entry.name === name) return { id: entry.id, name: entry.name }
     }
     return this.createFile(name)
@@ -73,10 +93,62 @@ export class FakeStore implements TodoStore {
   }
 
   async findOrCreateSibling(_ref: FileRef, name: string): Promise<FileRef> {
-    for (const entry of this.files.values()) {
+    for (const entry of this.live()) {
       if (entry.name === name) return { id: entry.id, name: entry.name }
     }
     return this.createFile(name)
+  }
+
+  async findOrCreateFolder(name: string): Promise<FileRef> {
+    for (const entry of this.live()) {
+      if (entry.isFolder && entry.name === name) return { id: entry.id, name: entry.name }
+    }
+    const created = this.newEntry(name, 'root', true)
+    this.files.set(created.id, created)
+    return { id: created.id, name: created.name }
+  }
+
+  async findOrCreateFileIn(parent: FileRef, name: string): Promise<FileRef> {
+    for (const entry of this.live()) {
+      if (entry.parent === parent.id && entry.name === name) {
+        return { id: entry.id, name: entry.name }
+      }
+    }
+    const created = this.newEntry(name, parent.id)
+    this.files.set(created.id, created)
+    return { id: created.id, name: created.name }
+  }
+
+  async uploadFile(parent: FileRef, file: File): Promise<DriveEntry> {
+    if (!this.signedIn) throw new Error('not signed in')
+    if (this.failingUploads > 0) {
+      this.failingUploads -= 1
+      throw new Error(`simulated upload failure for ${file.name}`)
+    }
+    const created = this.newEntry(file.name, parent.id)
+    created.text = await file.text()
+    this.files.set(created.id, created)
+    return entryOf(created)
+  }
+
+  /** Makes the next n uploads throw. */
+  failNextUploads(n = 1): void {
+    this.failingUploads = n
+  }
+
+  async listFiles(parent: FileRef): Promise<DriveEntry[]> {
+    return this.live()
+      .filter((entry) => entry.parent === parent.id)
+      .map(entryOf)
+  }
+
+  async trashFile(id: string): Promise<void> {
+    const entry = this.files.get(id)
+    if (entry) entry.trashed = true
+  }
+
+  isTrashed(id: string): boolean {
+    return this.files.get(id)?.trashed ?? false
   }
 
   async read(ref: FileRef): Promise<ReadResult> {
@@ -126,7 +198,7 @@ export class FakeStore implements TodoStore {
   }
 
   async findFileNamedLike(prefix: string): Promise<FileRef | null> {
-    for (const entry of this.files.values()) {
+    for (const entry of this.live()) {
       if (entry.name.startsWith(prefix)) return { id: entry.id, name: entry.name }
     }
     return null

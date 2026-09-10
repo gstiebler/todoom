@@ -78,3 +78,52 @@ describe('FakeStore', () => {
     expect((await s.read(ref)).text).toBe('Buy milk\n')
   })
 })
+
+describe('FakeStore folders and attachments', () => {
+  async function signedIn(): Promise<FakeStore> {
+    const store = new FakeStore()
+    await store.signIn()
+    return store
+  }
+
+  it('creates a folder once and reuses it', async () => {
+    const store = await signedIn()
+    const first = await store.findOrCreateFolder('Todoom')
+    expect(await store.findOrCreateFolder('Todoom')).toEqual(first)
+  })
+
+  it('keeps files with the same name apart when they are in different folders', async () => {
+    const store = await signedIn()
+    const a = await store.findOrCreateFolder('Todoom')
+    const b = await store.findOrCreateFolder('Other')
+    const inA = await store.findOrCreateFileIn(a, 'todo.txt')
+    const inB = await store.findOrCreateFileIn(b, 'todo.txt')
+    expect(inA.id).not.toBe(inB.id)
+  })
+
+  it('lists only what is inside the folder', async () => {
+    const store = await signedIn()
+    const folder = await store.findOrCreateFolder('Todoom')
+    await store.findOrCreateFileIn(folder, 'todo.txt')
+    await store.findOrCreateFolder('Other')
+    expect((await store.listFiles(folder)).map((e) => e.name)).toEqual(['todo.txt'])
+  })
+
+  it('stores an uploaded file with its contents and a link', async () => {
+    const store = await signedIn()
+    const folder = await store.findOrCreateFolder('Todoom')
+    const entry = await store.uploadFile(folder, new File(['eggs'], 'recipe.txt'))
+    expect(entry.name).toBe('recipe.txt')
+    expect(entry.webViewLink).toContain(entry.id)
+    expect((await store.read(entry)).text).toBe('eggs')
+  })
+
+  it('hides a trashed file from listings', async () => {
+    const store = await signedIn()
+    const folder = await store.findOrCreateFolder('Todoom')
+    const entry = await store.uploadFile(folder, new File(['eggs'], 'recipe.txt'))
+    await store.trashFile(entry.id)
+    expect(await store.listFiles(folder)).toEqual([])
+    expect(store.isTrashed(entry.id)).toBe(true)
+  })
+})

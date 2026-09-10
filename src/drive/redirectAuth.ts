@@ -66,3 +66,21 @@ export function randomState(): string {
   crypto.getRandomValues(bytes)
   return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
+
+/**
+ * A silent attempt is only suppressed while it might still be looping.
+ *
+ * A loop iterates in well under a second: page loads, redirects, comes back,
+ * redirects again. A reload minutes later is a person retrying, and a stale
+ * flag that refuses them forever turns one transient failure — a misconfigured
+ * redirect URI, a network blip — into a tab that never signs in again.
+ */
+export const SILENT_RETRY_AFTER_MS = 30_000
+
+export function mayTrySilently(lastAttempt: string | null, now: number): boolean {
+  if (!lastAttempt) return true
+  const at = Number(lastAttempt)
+  // An unreadable value is treated as no attempt rather than a permanent block.
+  if (!Number.isFinite(at)) return true
+  return now - at >= SILENT_RETRY_AFTER_MS
+}

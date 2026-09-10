@@ -11,7 +11,12 @@ import {
   loadFileRef,
   loadOrCreateTodoFile,
 } from './app/session'
-import { buildAuthUrl, parseAuthFragment, randomState } from './drive/redirectAuth'
+import {
+  buildAuthUrl,
+  mayTrySilently,
+  parseAuthFragment,
+  randomState,
+} from './drive/redirectAuth'
 import { renewalDecision, RENEW_LEAD_MS } from './app/renewal'
 import { SCOPE } from './drive/config'
 
@@ -19,7 +24,7 @@ import { SCOPE } from './drive/config'
 // restore across the round-trip, and a guard against redirect loops.
 const STATE_KEY = 'todoom.authState'
 const RETURN_KEY = 'todoom.authReturn'
-const TRIED_KEY = 'todoom.silentAuthTried'
+const TRIED_KEY = 'todoom.silentAuthAt'
 
 // Must match an Authorized redirect URI on the OAuth client exactly. BASE_URL
 // is the deployed base path, so this is stable whatever page the user landed on.
@@ -144,7 +149,7 @@ function main(): void {
     const state = randomState()
     sessionStorage.setItem(STATE_KEY, state)
     sessionStorage.setItem(RETURN_KEY, window.location.search)
-    if (mode === 'none') sessionStorage.setItem(TRIED_KEY, '1')
+    if (mode === 'none') sessionStorage.setItem(TRIED_KEY, String(Date.now()))
     window.location.assign(
       buildAuthUrl({
         clientId: store.clientId(),
@@ -234,7 +239,7 @@ function main(): void {
   // A saved file reference means this browser has connected before, so Google
   // will recognise the grant and bounce straight back. The guard stops a failed
   // attempt from redirecting on every load.
-  if (loadFileRef() && !sessionStorage.getItem(TRIED_KEY)) {
+  if (loadFileRef() && mayTrySilently(sessionStorage.getItem(TRIED_KEY), Date.now())) {
     showSignIn('Signing in\u2026', [])
     beginAuth('none')
     return

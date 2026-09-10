@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { buildAuthUrl, parseAuthFragment, randomState } from './redirectAuth'
+import {
+  buildAuthUrl,
+  mayTrySilently,
+  parseAuthFragment,
+  randomState,
+  SILENT_RETRY_AFTER_MS,
+} from './redirectAuth'
 
 const BASE = {
   clientId: 'client-123',
@@ -69,5 +75,25 @@ describe('randomState', () => {
 
   it('produces a 32-character hex string', () => {
     expect(randomState()).toMatch(/^[0-9a-f]{32}$/)
+  })
+})
+
+describe('mayTrySilently', () => {
+  const NOW = 1_800_000_000_000
+
+  it('allows the first attempt', () => {
+    expect(mayTrySilently(null, NOW)).toBe(true)
+  })
+
+  it('refuses a second attempt moments later, which would be a loop', () => {
+    expect(mayTrySilently(String(NOW - 200), NOW)).toBe(false)
+  })
+
+  it('allows a retry once the loop window has passed', () => {
+    expect(mayTrySilently(String(NOW - SILENT_RETRY_AFTER_MS), NOW)).toBe(true)
+  })
+
+  it('treats an unreadable timestamp as no attempt', () => {
+    expect(mayTrySilently('yesterday', NOW)).toBe(true)
   })
 })

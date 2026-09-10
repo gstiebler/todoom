@@ -7,15 +7,16 @@ Last updated: 2026-09-09 (America/Vancouver)
 - Public repository: <https://github.com/gstiebler/todoom>
 - Repository visibility: public
 - Default branch: `main`
-- Local `main`: `c91e0ce`
+- Local `main`: contains all completed implementation and documentation work
 - Remote `origin/main`: `c91e0ce`
 - Implementation worktree: `.worktrees/todoom-impl`
 - Implementation branch: `todoom-impl`
 - Latest tested code commit: `6487e5a` (`fix: use Node 20 compatible jsdom`)
 
-The interrupted merge-and-push command did not change `main` or the remote.
-`todoom-impl` is one code commit ahead of `main`; this handoff document is
-being recorded on that branch after the code commit.
+All tracked work from `todoom-impl` has been consolidated into local `main`.
+Local `main` is three commits ahead of `origin/main`: the Node 20 CI fix, the
+initial handoff document, and this consolidation update. Nothing after
+`c91e0ce` has been pushed.
 
 ## Implemented product behavior
 
@@ -53,8 +54,8 @@ The first deployment run failed:
   Undici dependency (`webidl.util.markAsUncloneable is not a function`).
 
 Commit `6487e5a` pins jsdom to the Node-20-compatible `26.x` release. This fix
-has passed all local unit, build, and browser checks but has not been merged to
-`main` or pushed.
+has passed all local unit, build, and browser checks and is present on local
+`main`, but it has not been pushed.
 
 ## Deployment state
 
@@ -79,7 +80,6 @@ Then, from the main worktree at
 ```bash
 gh variable set VITE_GOOGLE_CLIENT_ID --repo gstiebler/todoom --body "CLIENT_ID"
 gh api -X POST repos/gstiebler/todoom/pages -f build_type=workflow
-git merge --ff-only todoom-impl
 git push origin main
 gh run watch --repo gstiebler/todoom
 ```

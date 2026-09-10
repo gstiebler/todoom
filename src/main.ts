@@ -12,6 +12,7 @@ import {
   loadOrCreateTodoFile,
 } from './app/session'
 import { buildAuthUrl, parseAuthFragment, randomState } from './drive/redirectAuth'
+import { renewalDecision, RENEW_LEAD_MS } from './app/renewal'
 import { SCOPE } from './drive/config'
 
 // Keys are per-tab and hold no credential: a CSRF nonce, the query string to
@@ -53,7 +54,10 @@ function showSignIn(message: string, actions: Array<[string, () => void]>): void
   root!.appendChild(panel)
 }
 
-function start(store: TodoStore, ref: FileRef): void {
+/** How often to reconsider renewing. Cheap: it is one comparison. */
+const RENEWAL_POLL_MS = 15_000
+
+function start(store: TodoStore, ref: FileRef, onRenew?: (app: TodoomApp) => void): void {
   const app = new TodoomApp(store, todayIso)
   const saver = createDebouncedSaver(app, 2000)
 
@@ -100,6 +104,8 @@ function start(store: TodoStore, ref: FileRef): void {
       event.returnValue = ''
     }
   })
+
+  if (onRenew) onRenew(app)
 
   app
     .load(ref)
@@ -163,9 +169,37 @@ function main(): void {
     showSignIn(reason ? `${base} (${reason})` : base, [['Connect to Drive', connect]])
   }
 
-  function open(): void {
+  // Google sessions outlive the one-hour token by months, so the app can keep
+  // itself signed in indefinitely by redirecting again before the token dies —
+  // but only at a moment where the reload costs the user nothing.
+  function watchForRenewal(app: TodoomApp, expiresAt: number): void {
+    const timer = setInterval(() => {
+      const active = document.activeElement
+      const editing =
+        active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement
+      const decision = renewalDecision({
+        now: Date.now(),
+        expiresAt,
+        saveState: app.state.saveState,
+        editing,
+      })
+      if (decision !== 'renew') return
+      clearInterval(timer)
+      beginAuth('none')
+    }, RENEWAL_POLL_MS)
+  }
+
+  function open(expiresIn: number): void {
     loadOrCreateTodoFile(store)
-      .then((ref) => start(store, ref))
+      .then((ref) =>
+        start(store, ref, (app) => {
+          // A token too short-lived to schedule against is treated as
+          // unrenewable rather than renewed at once, which would redirect in a
+          // loop. The 401 path still catches its expiry.
+          const lifetimeMs = expiresIn * 1000
+          if (lifetimeMs > RENEW_LEAD_MS) watchForRenewal(app, Date.now() + lifetimeMs)
+        }),
+      )
       .catch(failed)
   }
 
@@ -193,7 +227,7 @@ function main(): void {
     }
     store.setToken(response.accessToken)
     sessionStorage.removeItem(TRIED_KEY)
-    open()
+    open(response.expiresIn)
     return
   }
 

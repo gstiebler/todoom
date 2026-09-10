@@ -180,11 +180,21 @@ with `history.replaceState` before any other code runs, restoring the filter
 query string the redirect discarded. A `state` nonce in `sessionStorage` is
 checked on return, so a response this tab did not initiate is refused.
 
-When the token expires, a Drive call returns 401 and the app reports that the
-session expired and asks the user to reload. It does not renew automatically:
-renewal means navigating to Google, which would discard any unsaved edit. The
-`beforeunload` guard warns if work is still dirty. This re-prompt is the
-accepted cost of having no backend.
+**Self-renewal.** A Google session outlives the one-hour token by months, so
+the app renews itself by repeating the silent redirect before the token dies —
+but only at a moment where the round-trip costs nothing. A poll every fifteen
+seconds asks one question: is the save state `idle` or `saved`? Anything else,
+`error` included, means the only copy of an edit is in memory, and the answer
+is always wait. Given a clean state the app renews within five minutes of
+expiry, deferring while a text field is focused unless the token is already
+dead. A token whose advertised lifetime is under that lead — including the zero
+assigned to a missing or malformed `expires_in` — schedules nothing, so a bad
+response cannot drive a redirect loop.
+
+When renewal is not possible, a Drive call returns 401 and the app reports that
+the session expired and asks the user to reload. The `beforeunload` guard warns
+if work is still dirty. That re-prompt is the accepted cost of having no
+backend, and self-renewal makes it rare.
 
 ### 5.2 Creating the file
 
@@ -349,9 +359,9 @@ Everything else, network failures included, propagates to a single top-level
 handler that renders the message in the status line and leaves the in-memory
 state untouched. Specific cases worth naming:
 
-- **401 or 403 on a request.** Report that the session expired and ask the user
-  to reload; renewing would navigate to Google and discard unsaved edits. Prompt to
-  reconnect.
+- **401 or 403 on a request.** Reached only when self-renewal could not run —
+  unsaved work held it off, or the silent redirect failed. Report that the
+  session expired and prompt the user to reload and reconnect.
 - **404 on the file.** The file was deleted or unshared. Clear the cached
   `FileRef` and return to the create-or-pick screen, keeping the in-memory
   tasks so the user can save them somewhere new.

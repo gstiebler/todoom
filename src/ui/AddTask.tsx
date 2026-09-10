@@ -1,5 +1,5 @@
 import { observer } from 'mobx-react-lite'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { TodoomApp } from '../app/state'
 import { collectContexts, collectProjects } from '../core/query'
 import { composeLine, emptyDraft } from './composeLine'
@@ -23,6 +23,11 @@ const AddTaskModal = observer(function AddTaskModal({
   // starts clean without an explicit reset.
   const [draft, setDraft] = useState(emptyDraft())
   const [popover, setPopover] = useState<Popover>(null)
+  // The files are held locally and only uploaded on submit, so a cancelled
+  // modal leaves nothing behind in Drive.
+  const [files, setFiles] = useState<File[]>([])
+  const [uploading, setUploading] = useState(false)
+  const picker = useRef<HTMLInputElement>(null)
 
   const labels = [
     ...collectProjects(app.state.tasks).map((p) => `+${p}`),
@@ -30,10 +35,12 @@ const AddTaskModal = observer(function AddTaskModal({
   ]
 
   const toggle = (next: Popover) => setPopover((current) => (current === next ? null : next))
-  const submit = () => {
-    const line = composeLine(draft)
-    if (line.length === 0) return
-    app.addTask(line)
+  const submit = async () => {
+    if (composeLine(draft).length === 0) return
+    setUploading(true)
+    const attachments = files.length > 0 ? await app.uploadFiles(files) : []
+    setUploading(false)
+    app.addTask(composeLine({ ...draft, attachments }))
     onClose()
   }
 
@@ -47,7 +54,7 @@ const AddTaskModal = observer(function AddTaskModal({
         onClick={(event) => event.stopPropagation()}
         onSubmit={(event) => {
           event.preventDefault()
-          submit()
+          void submit()
         }}
         onKeyDown={(event) => {
           if (event.key !== 'Escape') return
@@ -89,12 +96,35 @@ const AddTaskModal = observer(function AddTaskModal({
             {draft.labels.length > 0 ? draft.labels.join(' ') : 'Labels'}
           </button>
 
+          <button
+            type="button"
+            className={files.length > 0 ? 'modal-chip modal-chip--set' : 'modal-chip'}
+            onClick={() => picker.current?.click()}
+          >
+            {files.length > 0 ? files.map((file) => file.name).join(' ') : 'Attach'}
+          </button>
+          <input
+            className="attach-picker"
+            ref={picker}
+            type="file"
+            multiple
+            hidden
+            onChange={(event) => {
+              setFiles([...(event.target.files ?? [])])
+              event.target.value = ''
+            }}
+          />
+
           <div className="modal-actions">
             <button type="button" className="modal-cancel" aria-label="Cancel" onClick={onClose}>
               ×
             </button>
-            <button className="modal-submit" aria-label="Add task" disabled={draft.text.trim() === ''}>
-              ↑
+            <button
+              className="modal-submit"
+              aria-label="Add task"
+              disabled={uploading || draft.text.trim() === ''}
+            >
+              {uploading ? '…' : '↑'}
             </button>
           </div>
         </div>

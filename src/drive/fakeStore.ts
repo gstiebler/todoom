@@ -118,7 +118,8 @@ export class FakeStore implements TodoStore {
       throw new Error(`simulated upload failure for ${file.name}`)
     }
     const created = this.newEntry(file.name, parent.id)
-    created.text = await file.text()
+    // jsdom's File has no text(), and no attachment test needs the bytes.
+    if (typeof file.text === 'function') created.text = await file.text()
     this.files.set(created.id, created)
     return entryOf(created)
   }

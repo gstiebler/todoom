@@ -4,10 +4,11 @@ export interface Draft {
   due: string | null
   rec: string | null
   labels: string[]
+  attachments: string[]
 }
 
 export function emptyDraft(): Draft {
-  return { text: '', priority: null, due: null, rec: null, labels: [] }
+  return { text: '', priority: null, due: null, rec: null, labels: [], attachments: [] }
 }
 
 function hasPair(text: string, key: string): boolean {
@@ -29,6 +30,9 @@ export function composeLine(draft: Draft): string {
   }
   if (draft.due && !hasPair(text, 'due')) parts.push(`due:${draft.due}`)
   if (draft.rec && !hasPair(text, 'rec')) parts.push(`rec:${draft.rec}`)
+  for (const id of draft.attachments) {
+    if (!words.includes(`file:${id}`)) parts.push(`file:${id}`)
+  }
 
   return parts.join(' ').trim()
 }

@@ -48,3 +48,17 @@ describe('composeLine', () => {
     expect(composeLine({ ...emptyDraft(), text: '  Buy milk  ' })).toBe('Buy milk')
   })
 })
+
+describe('attachments', () => {
+  it('appends each attachment id', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk', attachments: ['aaa', 'bbb'] })).toBe(
+      'Buy milk file:aaa file:bbb',
+    )
+  })
+
+  it('does not duplicate an id the text already carries', () => {
+    expect(composeLine({ ...emptyDraft(), text: 'Buy milk file:aaa', attachments: ['aaa'] })).toBe(
+      'Buy milk file:aaa',
+    )
+  })
+})

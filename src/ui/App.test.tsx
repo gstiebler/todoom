@@ -308,3 +308,33 @@ describe('attachments', () => {
     expect(root.querySelector('.popover--attachments')).toBeNull()
   })
 })
+
+describe('attaching while composing', () => {
+  function pick(root: HTMLElement, name: string): void {
+    const picker = root.querySelector('.attach-picker') as HTMLInputElement
+    fireEvent.change(picker, { target: { files: [new File(['x'], name)] } })
+  }
+
+  it('uploads the chosen files on submit and links them', async () => {
+    const { root, app } = await mount('')
+    type_(root, 'Read the spec')
+    fireEvent.click(chip(root, 'Attach'))
+    pick(root, 'spec.pdf')
+    await act(async () => {
+      fireEvent.submit(root.querySelector('.modal')!)
+    })
+    const ids = app.state.tasks[0]?.attachments ?? []
+    expect(ids).toHaveLength(1)
+    expect(app.attachmentsById.get(ids[0] as string)?.name).toBe('spec.pdf')
+  })
+
+  it('uploads nothing when the modal is cancelled', async () => {
+    const { root, app, store } = await mount('')
+    type_(root, 'Read the spec')
+    fireEvent.click(chip(root, 'Attach'))
+    pick(root, 'spec.pdf')
+    fireEvent.click(root.querySelector('.modal-cancel')!)
+    const files = await store.listFiles(app.folder)
+    expect(files.map((f) => f.name)).not.toContain('spec.pdf')
+  })
+})

@@ -166,6 +166,16 @@ export class TodoomApp {
     this.markDirty()
   }
 
+  /** Applies one of the core's task mutations in place. */
+  updateTask(index: number, change: (task: Task) => Task): void {
+    const task = this.state.tasks[index]
+    if (!task) return
+    const next = change(task)
+    if (next === task) return
+    this.state.tasks[index] = next
+    this.markDirty()
+  }
+
   deleteTask(index: number): void {
     if (!this.state.tasks[index]) return
     this.state.tasks.splice(index, 1)

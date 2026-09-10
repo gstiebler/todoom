@@ -72,3 +72,30 @@ export function setNote(task: Task, note: string): Task {
   const description = text.length > 0 ? `${without} desc:"${text}"`.trim() : without
   return reparse({ ...task, description })
 }
+
+export function setDue(task: Task, due: string | null): Task {
+  return reparse({
+    ...task,
+    description: due ? setPairValue(task.description, 'due', due) : removePair(task.description, 'due'),
+  })
+}
+
+export function setRec(task: Task, rec: string | null): Task {
+  return reparse({
+    ...task,
+    description: rec ? setPairValue(task.description, 'rec', rec) : removePair(task.description, 'rec'),
+  })
+}
+
+export function setPriority(task: Task, priority: string | null): Task {
+  return reparse({ ...task, priority: priority ?? undefined })
+}
+
+/** Adds or drops a +project or @context word. */
+export function toggleLabel(task: Task, label: string): Task {
+  const words = task.description.split(' ')
+  const description = words.includes(label)
+    ? normalizeLine(words.filter((word) => word !== label).join(' '))
+    : normalizeLine(`${task.description} ${label}`)
+  return reparse({ ...task, description })
+}

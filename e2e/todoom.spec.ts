@@ -42,13 +42,20 @@ test('searches', async ({ page }) => {
   await expect(page.locator('.task')).toHaveCount(1)
 })
 
-test('edits a task inline', async ({ page }) => {
+test('edits a task in its modal', async ({ page }) => {
   await page.goto(PAGE)
   await page.locator('.task', { hasText: 'Buy milk' }).locator('.task__text').click()
-  const editor = page.locator('.task__editor')
-  await editor.fill('Buy oat milk +groceries')
-  await editor.press('Enter')
-  await expect(page.locator('.task', { hasText: 'Buy oat milk' })).toBeVisible()
+  const modal = page.locator('.task-modal')
+  await modal.locator('.task-modal__title').fill('Buy oat milk')
+  await modal.locator('.task-modal__note').fill('the barista one')
+  await modal.locator('.field--priority .field__value').click()
+  await modal.getByRole('button', { name: '(B)', exact: true }).click()
+  await modal.locator('.task-modal__close').click()
+
+  const row = page.locator('.task', { hasText: 'Buy oat milk' })
+  await expect(row).toContainText('the barista one')
+  await expect(row).toContainText('+groceries')
+  await expect(row.locator('.task__check')).toHaveClass(/task__check--b/)
 })
 
 test('archives completed tasks', async ({ page }) => {

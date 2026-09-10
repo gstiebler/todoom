@@ -143,30 +143,10 @@ describe('App', () => {
     expect(app.state.tasks).toHaveLength(0)
   })
 
-  it('opens an editor when the text is clicked', async () => {
+  it('opens the task modal when the text is clicked', async () => {
     const { root } = await mount('Buy milk\n')
     fireEvent.click(root.querySelector('.task__text')!)
-    expect(root.querySelector('.task__editor')).not.toBeNull()
-  })
-
-  it('commits an inline edit on Enter', async () => {
-    const { root, app } = await mount('Buy milk\n')
-    fireEvent.click(root.querySelector('.task__text')!)
-    const editor = root.querySelector('.task__editor')!
-    fireEvent.change(editor, { target: { value: 'Buy oat milk' } })
-    fireEvent.keyDown(editor, { key: 'Enter' })
-    expect(app.state.tasks[0]?.description).toBe('Buy oat milk')
-  })
-
-  it('discards an inline edit on Escape', async () => {
-    const { root, app } = await mount('Buy milk\n')
-    fireEvent.click(root.querySelector('.task__text')!)
-    const editor = root.querySelector('.task__editor')!
-    fireEvent.change(editor, { target: { value: 'Buy oat milk' } })
-    fireEvent.keyDown(editor, { key: 'Escape' })
-    fireEvent.blur(editor)
-    expect(app.state.tasks[0]?.description).toBe('Buy milk')
-    expect(root.querySelector('.task__editor')).toBeNull()
+    expect(root.querySelector('.task-modal')).not.toBeNull()
   })
 
   it('filters by project when a chip is clicked', async () => {
@@ -356,5 +336,71 @@ describe('task description', () => {
     const { root } = await mount('Buy milk desc:"from the corner shop"\n')
     expect(root.querySelector('.task__text')?.textContent).toBe('Buy milk')
     expect(root.querySelector('.task__note')?.textContent).toBe('from the corner shop')
+  })
+})
+
+describe('task modal', () => {
+  function open(root: HTMLElement, text = 'Buy milk'): Element {
+    const row = [...root.querySelectorAll('.task')].find((t) => t.textContent?.includes(text))!
+    fireEvent.click(row.querySelector('.task__text')!)
+    return root.querySelector('.task-modal')!
+  }
+
+  it('opens on the task title with the task in it', async () => {
+    const { root } = await mount('Buy milk +groceries desc:"from the corner shop"\n')
+    const modal = open(root)
+    expect((modal.querySelector('.task-modal__title') as HTMLInputElement).value).toBe('Buy milk')
+    expect((modal.querySelector('.task-modal__note') as HTMLInputElement).value).toBe(
+      'from the corner shop',
+    )
+  })
+
+  it('renames the task and keeps its tags', async () => {
+    const { root, app } = await mount('Buy milk +groceries\n')
+    const modal = open(root)
+    const title = modal.querySelector('.task-modal__title')!
+    fireEvent.change(title, { target: { value: 'Buy oat milk' } })
+    fireEvent.blur(title)
+    expect(app.state.tasks[0]?.description).toBe('Buy oat milk +groceries')
+  })
+
+  it('writes the description', async () => {
+    const { root, app } = await mount('Buy milk\n')
+    const modal = open(root)
+    const note = modal.querySelector('.task-modal__note')!
+    fireEvent.change(note, { target: { value: 'the oat one' } })
+    fireEvent.blur(note)
+    expect(app.state.tasks[0]?.note).toBe('the oat one')
+  })
+
+  it('sets a priority from the sidebar', async () => {
+    const { root, app } = await mount('Buy milk\n')
+    const modal = open(root)
+    fireEvent.click(modal.querySelector('.field--priority .field__value')!)
+    fireEvent.click([...modal.querySelectorAll('.priority')].find((b) => b.textContent === '(B)')!)
+    expect(app.state.tasks[0]?.priority).toBe('B')
+  })
+
+  it('sets a due date from the sidebar', async () => {
+    const { root, app } = await mount('Buy milk\n')
+    const modal = open(root)
+    fireEvent.click(modal.querySelector('.field--date .field__value')!)
+    fireEvent.click(modal.querySelector('.quick-date')!)
+    expect(app.state.tasks[0]?.pairs['due']).toBe(TODAY)
+  })
+
+  it('toggles a label from the sidebar', async () => {
+    const { root, app } = await mount('Buy milk\nCall plumber +house\n')
+    const modal = open(root)
+    fireEvent.click(modal.querySelector('.field--labels .field__value')!)
+    fireEvent.click(modal.querySelector('.label-option input')!)
+    expect(app.state.tasks[0]?.projects).toEqual(['house'])
+  })
+
+  it('closes on Escape', async () => {
+    const { root } = await mount('Buy milk\n')
+    const modal = open(root)
+    fireEvent.keyDown(modal, { key: 'Escape' })
+    expect(root.querySelector('.task-modal')).toBeNull()
   })
 })

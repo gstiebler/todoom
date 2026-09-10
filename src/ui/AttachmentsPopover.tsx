@@ -6,22 +6,16 @@ import type { TodoomApp } from '../app/state'
  * The files hanging off one task. A file the folder no longer holds still
  * shows up — by its id — so a stale `file:` word can be taken off the line.
  */
-export const AttachmentsPopover = observer(function AttachmentsPopover({
+export const AttachmentList = observer(function AttachmentList({
   app,
   index,
   ids,
-  onClose,
 }: {
   app: TodoomApp
   index: number
   ids: string[]
-  onClose: () => void
 }) {
   const picker = useRef<HTMLInputElement>(null)
-  const panel = useRef<HTMLDivElement>(null)
-
-  // Escape closes the popover, which means it has to hold the focus first.
-  useEffect(() => panel.current?.focus(), [])
 
   const detach = (id: string, name: string) => {
     if (!confirm(`Move ${name} to the Drive trash?`)) return
@@ -29,14 +23,7 @@ export const AttachmentsPopover = observer(function AttachmentsPopover({
   }
 
   return (
-    <div
-      className="popover popover--attachments"
-      ref={panel}
-      tabIndex={-1}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') onClose()
-      }}
-    >
+    <>
       {ids.length === 0 && <p className="popover__empty">No files yet.</p>}
       <ul className="attachment-list">
         {ids.map((id) => {
@@ -84,6 +71,37 @@ export const AttachmentsPopover = observer(function AttachmentsPopover({
           event.target.value = ''
         }}
       />
+    </>
+  )
+})
+
+/** The same list, hanging off a task row. */
+export const AttachmentsPopover = observer(function AttachmentsPopover({
+  app,
+  index,
+  ids,
+  onClose,
+}: {
+  app: TodoomApp
+  index: number
+  ids: string[]
+  onClose: () => void
+}) {
+  const panel = useRef<HTMLDivElement>(null)
+
+  // Escape closes the popover, which means it has to hold the focus first.
+  useEffect(() => panel.current?.focus(), [])
+
+  return (
+    <div
+      className="popover popover--attachments"
+      ref={panel}
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') onClose()
+      }}
+    >
+      <AttachmentList app={app} index={index} ids={ids} />
     </div>
   )
 })

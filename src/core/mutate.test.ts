@@ -8,6 +8,10 @@ import {
   addAttachment,
   removeAttachment,
   setNote,
+  setDue,
+  setRec,
+  setPriority,
+  toggleLabel,
 } from './mutate'
 import { parseLine } from './parse'
 import { formatTask } from './format'
@@ -141,5 +145,35 @@ describe('setNote', () => {
     expect(parseLine(setNote(parseLine('Buy milk'), 'the "big" one').raw).note).toBe(
       "the 'big' one",
     )
+  })
+})
+
+describe('field mutations', () => {
+  it('sets a due date', () => {
+    expect(setDue(parseLine('Buy milk'), '2026-09-12').raw).toBe('Buy milk due:2026-09-12')
+  })
+
+  it('clears a due date', () => {
+    expect(setDue(parseLine('Buy milk due:2026-09-12'), null).raw).toBe('Buy milk')
+  })
+
+  it('sets and clears a recurrence', () => {
+    const every = setRec(parseLine('Buy milk'), '1w')
+    expect(every.raw).toBe('Buy milk rec:1w')
+    expect(setRec(every, null).raw).toBe('Buy milk')
+  })
+
+  it('sets a priority on an open task', () => {
+    expect(setPriority(parseLine('Buy milk'), 'B').raw).toBe('(B) Buy milk')
+  })
+
+  it('clears a priority', () => {
+    expect(setPriority(parseLine('(B) Buy milk'), null).raw).toBe('Buy milk')
+  })
+
+  it('adds and removes a label', () => {
+    const tagged = toggleLabel(parseLine('Buy milk'), '+groceries')
+    expect(tagged.projects).toEqual(['groceries'])
+    expect(toggleLabel(tagged, '+groceries').raw).toBe('Buy milk')
   })
 })

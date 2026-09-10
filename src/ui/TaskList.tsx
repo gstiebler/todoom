@@ -1,22 +1,12 @@
 import { observer } from 'mobx-react-lite'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type { Task } from '../core/types'
 import type { TodoomApp } from '../app/state'
-import { formatTask } from '../core/format'
-import { NOTE_RE } from '../core/parse'
 import { describeTask } from './describeTask'
 import { AttachmentsPopover } from './AttachmentsPopover'
+import { TaskModal } from './TaskModal'
+import { taskTitle } from '../core/title'
 import { CalendarIcon, PaperclipIcon, RepeatIcon, TagIcon } from './icons'
-
-// The title line is the description with the machinery taken out: the tags and
-// the key:value pairs all reappear below it, in the meta row.
-function title(task: Task): string {
-  const words = task.description
-    .replace(NOTE_RE, ' ')
-    .split(' ')
-    .filter((word) => !/^[+@]\S/.test(word) && !/^(due|rec|pri|file):/.test(word))
-  return words.join(' ').trim() || task.description
-}
 
 function Tag({ label, kind }: { label: string; kind: 'project' | 'context' }) {
   return (
@@ -36,23 +26,12 @@ const TaskRow = observer(function TaskRow({
   task: Task
   today: string
 }) {
-  const [draft, setDraft] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
   const [attachOpen, setAttachOpen] = useState(false)
-  // Escape unmounts the editor, and an unmounted input must not commit whatever
-  // it happened to be holding.
-  const discarded = useRef(false)
   const index = app.indexOf(task)
   const { classes, dueLabel } = describeTask(task, today)
   const rec = task.pairs['rec']
 
-  const commit = () => {
-    if (discarded.current) {
-      discarded.current = false
-      return
-    }
-    if (draft !== null) app.editTask(index, draft)
-    setDraft(null)
-  }
 
   return (
     <li className={classes.join(' ')}>
@@ -64,26 +43,9 @@ const TaskRow = observer(function TaskRow({
       />
 
       <div className="task__body">
-        {draft === null ? (
-          <span className="task__text" onClick={() => setDraft(formatTask(task))}>
-            {title(task)}
-          </span>
-        ) : (
-          <input
-            className="task__editor"
-            autoFocus
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={commit}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') commit()
-              if (event.key === 'Escape') {
-                discarded.current = true
-                setDraft(null)
-              }
-            }}
-          />
-        )}
+        <span className="task__text" onClick={() => setOpen(true)}>
+          {taskTitle(task)}
+        </span>
 
         {task.note && <p className="task__note">{task.note}</p>}
 
@@ -124,6 +86,8 @@ const TaskRow = observer(function TaskRow({
       <button className="task__delete" title="Delete" onClick={() => app.deleteTask(index)}>
         ×
       </button>
+
+      {open && <TaskModal app={app} task={task} today={today} onClose={() => setOpen(false)} />}
 
       {attachOpen && (
         <AttachmentsPopover

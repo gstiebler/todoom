@@ -1,6 +1,8 @@
 import { observer } from 'mobx-react-lite'
+import { useEffect, useState } from 'react'
 import type { DueView } from '../core/query'
 import type { TodoomApp } from '../app/state'
+import { applyTheme, loadTheme } from './theme'
 import { collectProjects, collectContexts, collectPriorities } from '../core/query'
 
 const STATUS_TEXT: Record<string, string> = {
@@ -61,6 +63,8 @@ function Chips({
 export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
   const { tasks, filter, saveState, error } = app.state
   const failed = saveState === 'error'
+  const [theme, setTheme] = useState(loadTheme)
+  useEffect(() => applyTheme(theme), [theme])
 
   return (
     <aside className="sidebar">
@@ -74,6 +78,12 @@ export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
             Retry
           </button>
         )}
+        <button
+          className="theme-btn"
+          onClick={() => setTheme(theme === 'terminal' ? 'auto' : 'terminal')}
+        >
+          {theme === 'terminal' ? 'auto' : 'terminal'}
+        </button>
       </div>
 
       <input

@@ -608,3 +608,44 @@ button:hover { border-color: var(--accent); }
 
 .signin { text-align: center; padding: 64px 0; }
 .signin p { color: var(--muted); }
+
+/* The terminal skin: same layout, repainted. It comes last so its square corners
+   win over the rounded ones above without needing !important. */
+[data-theme='terminal'] {
+  --bg: #0b0e0b;
+  --fg: #c5e8c5;
+  --muted: #4e6a4e;
+  --border: #1f2a1f;
+  --accent: #7dff5e;
+  --overdue: #ff6b5e;
+  --today: #ffb454;
+  --surface: #101510;
+  --soon: #6ee7ff;
+  --tag-context: #5ee89a;
+  color-scheme: dark;
+}
+
+[data-theme='terminal'] body {
+  font: 13px/1.7 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+[data-theme='terminal'] * {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* A terminal marks the selection by inverting it, not by tinting white text. */
+[data-theme='terminal'] .view-btn--active { color: var(--bg); }
+
+.theme-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.theme-btn:hover { color: var(--fg); }

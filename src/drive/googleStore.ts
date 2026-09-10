@@ -106,28 +106,6 @@ export class GoogleDriveStore implements TodoStore {
     await this.requestToken('consent')
   }
 
-  // Ask Google for a token without showing any UI. This succeeds only when the
-  // browser still has a Google session and the scope is already granted, which
-  // is what lets a returning visitor skip the Connect screen. It resolves false
-  // rather than throwing: a revoked grant, an expired session or blocked
-  // third-party cookies are all ordinary reasons to fall back to the button.
-  async signInSilently(): Promise<boolean> {
-    await this.ensureTokenClient()
-    try {
-      await Promise.race([
-        this.requestToken(''),
-        // Google occasionally answers neither callback; without this the page
-        // would sit on the placeholder forever.
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('silent sign-in timed out')), 10000),
-        ),
-      ])
-      return true
-    } catch {
-      return false
-    }
-  }
-
   private requestToken(prompt: '' | 'consent'): Promise<void> {
     return new Promise((resolve, reject) => {
       const tokenClient = this.tokenClient!

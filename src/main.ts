@@ -5,12 +5,7 @@ import type { FileRef, TodoStore } from './drive/store'
 import { render } from './ui/render'
 import { filterFromQuery } from './app/urlState'
 import { syncFilterHistory } from './app/urlHistory'
-import {
-  clearFileRef,
-  createDebouncedSaver,
-  loadFileRef,
-  loadOrCreateTodoFile,
-} from './app/session'
+import { clearFileRef, createDebouncedSaver, loadOrCreateTodoFile } from './app/session'
 
 const root = document.querySelector<HTMLDivElement>('#app')
 if (!root) throw new Error('missing #app element')
@@ -128,27 +123,18 @@ function main(): void {
       .catch(failed)
   }
 
-  function offerConnect(): void {
-    showSignIn('Todoom keeps your tasks in a todo.txt file in your Google Drive.', [
+  function offerConnect(reason?: string): void {
+    const base = 'Todoom keeps your tasks in a todo.txt file in your Google Drive.'
+    showSignIn(reason ? `${base} (Reconnecting failed: ${reason})` : base, [
       ['Connect to Drive', connect],
     ])
   }
 
-  // A saved file reference means this browser has connected before, so Google
-  // will usually hand back a token with no UI at all. Try that first and go
-  // straight to the list; the button is only for a first visit or a lapsed
-  // grant.
-  const saved = loadFileRef()
-  if (!saved) {
-    offerConnect()
-    return
-  }
-
-  showSignIn('Reconnecting to Google Drive\u2026', [])
-  void store.signInSilently().then((ok) => {
-    if (ok) start(store, saved)
-    else offerConnect()
-  }, offerConnect)
+  // Google's token flow always opens a popup, and a popup that is not opened
+  // from a user gesture is blocked. There is therefore no way to obtain a Drive
+  // token on page load, however live the Google session is: the click is
+  // mandatory, not a design choice.
+  offerConnect()
 }
 
 main()

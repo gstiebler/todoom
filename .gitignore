@@ -6,3 +6,5 @@ playwright-report/
 .worktrees/
 .superpowers/
 .env
+.dev.vars
+.wrangler/

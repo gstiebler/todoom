@@ -1,5 +1,5 @@
 import type { FileRef, ReadResult, TodoStore } from './store'
-import { loadConfig } from './config'
+import { backendTokens, SignedOutError, type TokenSource } from './tokens'
 
 const FILES = 'https://www.googleapis.com/drive/v3/files'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
@@ -31,54 +31,63 @@ function quoteForQuery(value: string): string {
 
 export class GoogleDriveStore implements TodoStore {
   private token: string | null = null
-  private config = loadConfig()
+  private expiresAt = 0
 
-  clientId(): string {
-    return this.config.clientId
-  }
+  constructor(private readonly tokens: TokenSource = backendTokens) {}
 
   isSignedIn(): boolean {
     return this.token !== null
   }
 
-  // The token is supplied by the redirect flow in main.ts and held in memory
-  // only, never in localStorage, sessionStorage or a cookie. See spec §5.1.
-  setToken(token: string): void {
-    this.token = token
-  }
-
   async signIn(): Promise<void> {
-    throw new Error('Todoom signs in by redirect; call startRedirectSignIn instead.')
+    await this.authorize()
   }
 
   signOut(): void {
-    const token = this.token
     this.token = null
-    if (!token) return
-    // Best effort: the page is usually navigating away, and a failed revoke
-    // costs nothing because the token expires within the hour regardless.
-    void fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    }).catch(() => {})
+    this.expiresAt = 0
+    void fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {})
+  }
+
+  /**
+   * The access token lives an hour; the session behind it lives as long as the
+   * cookie. Renewal is therefore not an event to schedule but a question asked
+   * before every request, and the answer is almost always the cached token.
+   */
+  private async authorize(): Promise<string> {
+    // A minute of slack so a token cannot expire in flight between this check
+    // and Drive receiving it.
+    if (this.token && Date.now() < this.expiresAt - 60_000) return this.token
+    const issued = await this.tokens.fetch()
+    this.token = issued.accessToken
+    this.expiresAt = Date.now() + issued.expiresIn * 1000
+    return this.token
   }
 
   private async request(url: string, init: RequestInit = {}): Promise<Response> {
-    if (!this.token) throw new Error('not signed in')
-    const headers = new Headers(init.headers)
-    headers.set('Authorization', `Bearer ${this.token}`)
-    const response = await fetch(url, { ...init, headers })
-    // Renewing the token means navigating to Google, which would discard any
-    // unsaved edit. Report the expiry instead and let the user reload when the
-    // work is safe; the beforeunload guard warns if anything is still dirty.
+    let response = await this.send(url, init, await this.authorize())
+
+    // Drive rejected a token the app believed was good — a clock skew, or a
+    // token revoked mid-session. One forced renewal distinguishes a stale
+    // token from a dead session, and costs a single extra round trip.
+    if (response.status === 401) {
+      this.token = null
+      response = await this.send(url, init, await this.authorize())
+    }
     if (response.status === 401 || response.status === 403) {
       this.token = null
-      throw new Error('Your Google session expired. Reload the page to reconnect.')
+      throw new SignedOutError()
     }
     if (!response.ok) {
       throw new Error(`Drive request failed: ${response.status} ${await response.text()}`)
     }
     return response
+  }
+
+  private async send(url: string, init: RequestInit, token: string): Promise<Response> {
+    const headers = new Headers(init.headers)
+    headers.set('Authorization', `Bearer ${token}`)
+    return fetch(url, { ...init, headers })
   }
 
   async createFile(name: string, parent?: string): Promise<FileRef> {

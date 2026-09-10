@@ -2,7 +2,6 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/todoom/',
   build: {
     rollupOptions: {
       input: {
@@ -12,7 +11,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'worker/**/*.test.ts'],
     environmentMatchGlobs: [
       ['src/ui/**', 'jsdom'],
       ['src/app/session.test.ts', 'jsdom'],

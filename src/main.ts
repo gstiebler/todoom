@@ -5,32 +5,8 @@ import type { FileRef, TodoStore } from './drive/store'
 import { render } from './ui/render'
 import { filterFromQuery } from './app/urlState'
 import { syncFilterHistory } from './app/urlHistory'
-import {
-  clearFileRef,
-  createDebouncedSaver,
-  loadFileRef,
-  loadOrCreateTodoFile,
-} from './app/session'
-import {
-  buildAuthUrl,
-  mayTrySilently,
-  parseAuthFragment,
-  randomState,
-} from './drive/redirectAuth'
-import { renewalDecision, RENEW_LEAD_MS } from './app/renewal'
-import { SCOPE } from './drive/config'
-
-// Keys are per-tab and hold no credential: a CSRF nonce, the query string to
-// restore across the round-trip, and a guard against redirect loops.
-const STATE_KEY = 'todoom.authState'
-const RETURN_KEY = 'todoom.authReturn'
-const TRIED_KEY = 'todoom.silentAuthAt'
-
-// Must match an Authorized redirect URI on the OAuth client exactly. BASE_URL
-// is the deployed base path, so this is stable whatever page the user landed on.
-function redirectUri(): string {
-  return new URL(import.meta.env.BASE_URL, window.location.origin).href
-}
+import { clearFileRef, createDebouncedSaver, loadOrCreateTodoFile } from './app/session'
+import { SignedOutError } from './drive/tokens'
 
 const root = document.querySelector<HTMLDivElement>('#app')
 if (!root) throw new Error('missing #app element')
@@ -59,10 +35,7 @@ function showSignIn(message: string, actions: Array<[string, () => void]>): void
   root!.appendChild(panel)
 }
 
-/** How often to reconsider renewing. Cheap: it is one comparison. */
-const RENEWAL_POLL_MS = 15_000
-
-function start(store: TodoStore, ref: FileRef, onRenew?: (app: TodoomApp) => void): void {
+function start(store: TodoStore, ref: FileRef): void {
   const app = new TodoomApp(store, todayIso)
   const saver = createDebouncedSaver(app, 2000)
 
@@ -110,8 +83,6 @@ function start(store: TodoStore, ref: FileRef, onRenew?: (app: TodoomApp) => voi
     }
   })
 
-  if (onRenew) onRenew(app)
-
   app
     .load(ref)
     .then(draw)
@@ -129,15 +100,7 @@ function start(store: TodoStore, ref: FileRef, onRenew?: (app: TodoomApp) => voi
 }
 
 function main(): void {
-  let store: GoogleDriveStore
-  try {
-    store = new GoogleDriveStore()
-  } catch (error) {
-    showSignIn(error instanceof Error ? error.message : String(error), [
-      ['Reload', () => window.location.reload()],
-    ])
-    return
-  }
+  const store = new GoogleDriveStore()
 
   const failed = (error: unknown) => {
     showSignIn(error instanceof Error ? error.message : String(error), [
@@ -145,107 +108,36 @@ function main(): void {
     ])
   }
 
-  function beginAuth(mode: 'none' | 'interactive'): void {
-    const state = randomState()
-    sessionStorage.setItem(STATE_KEY, state)
-    sessionStorage.setItem(RETURN_KEY, window.location.search)
-    if (mode === 'none') sessionStorage.setItem(TRIED_KEY, String(Date.now()))
-    window.location.assign(
-      buildAuthUrl({
-        clientId: store.clientId(),
-        redirectUri: redirectUri(),
-        scope: SCOPE,
-        state,
-        mode,
-      }),
-    )
-  }
-
-  function connect(): void {
-    // An explicit click is a fresh mandate: let the silent path be tried again
-    // on the next load even if it failed earlier in this tab.
-    sessionStorage.removeItem(TRIED_KEY)
-    showSignIn('Taking you to Google\u2026', [])
-    beginAuth('interactive')
-  }
-
   function offerConnect(reason?: string): void {
     const base = 'Todoom keeps your tasks in a todo.txt file in your Google Drive.'
-    showSignIn(reason ? `${base} (${reason})` : base, [['Connect to Drive', connect]])
+    showSignIn(reason ? `${base} (${reason})` : base, [
+      // A full navigation, not a fetch: the backend answers with a redirect to
+      // Google, and only a top-level load can follow it.
+      ['Connect to Drive', () => window.location.assign('/auth/start')],
+    ])
   }
 
-  // Google sessions outlive the one-hour token by months, so the app can keep
-  // itself signed in indefinitely by redirecting again before the token dies —
-  // but only at a moment where the reload costs the user nothing.
-  function watchForRenewal(app: TodoomApp, expiresAt: number): void {
-    const timer = setInterval(() => {
-      const active = document.activeElement
-      const editing =
-        active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement
-      const decision = renewalDecision({
-        now: Date.now(),
-        expiresAt,
-        saveState: app.state.saveState,
-        editing,
-      })
-      if (decision !== 'renew') return
-      clearInterval(timer)
-      beginAuth('none')
-    }, RENEWAL_POLL_MS)
+  // The backend reports a failed sign-in by bouncing back with ?error=. Take it
+  // out of the address bar before the filter parser sees it.
+  const params = new URLSearchParams(window.location.search)
+  const error = params.get('error')
+  if (error) {
+    params.delete('error')
+    const query = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (query ? `?${query}` : ''))
   }
 
-  function open(expiresIn: number): void {
-    loadOrCreateTodoFile(store)
-      .then((ref) =>
-        start(store, ref, (app) => {
-          // A token too short-lived to schedule against is treated as
-          // unrenewable rather than renewed at once, which would redirect in a
-          // loop. The 401 path still catches its expiry.
-          const lifetimeMs = expiresIn * 1000
-          if (lifetimeMs > RENEW_LEAD_MS) watchForRenewal(app, Date.now() + lifetimeMs)
-        }),
-      )
-      .catch(failed)
-  }
-
-  const response = parseAuthFragment(window.location.hash)
-  if (response.kind !== 'none') {
-    const expected = sessionStorage.getItem(STATE_KEY)
-    const search = sessionStorage.getItem(RETURN_KEY) ?? ''
-    sessionStorage.removeItem(STATE_KEY)
-    sessionStorage.removeItem(RETURN_KEY)
-
-    // Strip the token out of the address bar before anything else runs, and put
-    // back the filter query string the redirect discarded.
-    window.history.replaceState(null, '', window.location.pathname + search)
-
-    if (!expected || response.state !== expected) {
-      // A response we did not ask for: someone else's token, or a stale tab.
-      offerConnect('That sign-in response did not match this tab.')
-      return
-    }
-    if (response.kind === 'error') {
-      // prompt=none reports login_required or interaction_required when the
-      // Google session or the grant is gone. Both mean "ask properly".
-      offerConnect(`Automatic sign-in failed: ${response.error}`)
-      return
-    }
-    store.setToken(response.accessToken)
-    sessionStorage.removeItem(TRIED_KEY)
-    open(response.expiresIn)
-    return
-  }
-
-  // A saved file reference means this browser has connected before, so Google
-  // will recognise the grant and bounce straight back. The guard stops a failed
-  // attempt from redirecting on every load.
-  if (loadFileRef() && mayTrySilently(sessionStorage.getItem(TRIED_KEY), Date.now())) {
-    showSignIn('Signing in\u2026', [])
-    beginAuth('none')
-    return
-  }
-
-  offerConnect()
+  store
+    .signIn()
+    .then(() => loadOrCreateTodoFile(store))
+    .then((ref) => start(store, ref))
+    .catch((cause: unknown) => {
+      if (cause instanceof SignedOutError) {
+        offerConnect(error ? `sign-in failed: ${error}` : undefined)
+        return
+      }
+      failed(cause)
+    })
 }
 
 main()

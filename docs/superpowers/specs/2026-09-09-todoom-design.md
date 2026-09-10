@@ -153,48 +153,61 @@ interface Task {
 
 ### 5.1 Auth
 
-Google Identity Services, implicit token flow, entirely in the browser. The
-OAuth client is a Web application client with the deployed origin registered as
-an authorized JavaScript origin. There is no client secret, because a public
-client does not have one.
+Authorization code flow, run by a **backend-for-frontend**: a Cloudflare Worker
+that serves the static app and four auth routes from one origin.
 
 Scope: `https://www.googleapis.com/auth/drive.file` only. This grants access to
 files the app creates. Todoom can never see the rest of the user's Drive.
 
-The access token is short-lived, roughly one hour, and is held in memory only.
-It is never written to `localStorage`, `sessionStorage` or a cookie, because
-anything there is readable by any script that gets injected into the page.
+**Why a backend at all.** The browser-only version could not hold a refresh
+token: the code flow requires a client secret at Google's token endpoint, and a
+secret shipped to a page is not a secret. Without a refresh token the session
+died with the one-hour access token, so the app had to bounce the user through
+Google again — a page reload that risked discarding unsaved edits, and that
+failed outright for a user signed into several Google accounts. A server can
+keep a secret, so it can hold a refresh token and mint access tokens on demand.
 
-Sign-in uses the implicit flow driven by a **top-level redirect**, not the
-Google Identity Services popup. The popup is opened by script, so a browser
-blocks it unless a click is in scope, which makes automatic sign-in on page
-load impossible however live the Google session is. A top-level navigation is a
-first-party context and carries the user's Google session cookie, so with
-`prompt=none` Google recognises an existing grant and redirects straight back
-with no UI. A returning visitor lands on their task list without clicking.
+**Why one origin.** A session cookie set by any origin other than the one
+serving the app is a third-party cookie, which Safari's ITP and Edge's tracking
+prevention block. Serving the app from the Worker makes the cookie first-party.
+This is a requirement, not a convenience.
 
-**Exception to "never in a URL".** The implicit flow returns the token in the
-URL fragment. This is accepted here: a fragment is never transmitted — it
-appears in no request, server log or `Referer` header — and the app strips it
-with `history.replaceState` before any other code runs, restoring the filter
-query string the redirect discarded. A `state` nonce in `sessionStorage` is
-checked on return, so a response this tab did not initiate is refused.
+| Route | Behaviour |
+| --- | --- |
+| `GET /auth/start` | Redirect to Google with `access_type=offline` and `prompt=consent`; `state` nonce in a ten-minute cookie |
+| `GET /auth/callback` | Verify `state`, exchange the code, set the session cookie, redirect to `/` |
+| `GET /api/token` | Mint an access token from the refresh token; `401 signed_out` if the cookie is missing, forged, or dead |
+| `POST /auth/logout` | Revoke at Google and clear the cookie |
 
-**Self-renewal.** A Google session outlives the one-hour token by months, so
-the app renews itself by repeating the silent redirect before the token dies —
-but only at a moment where the round-trip costs nothing. A poll every fifteen
-seconds asks one question: is the save state `idle` or `saved`? Anything else,
-`error` included, means the only copy of an edit is in memory, and the answer
-is always wait. Given a clean state the app renews within five minutes of
-expiry, deferring while a text field is focused unless the token is already
-dead. A token whose advertised lifetime is under that lead — including the zero
-assigned to a missing or malformed `expires_in` — schedules nothing, so a bad
-response cannot drive a redirect loop.
+`prompt=consent` is required, not cosmetic: without `access_type=offline`
+Google returns no refresh token, and without a forced consent it returns one
+only on a user's very first authorization, so a reconnecting user would
+silently get a session that dies in an hour.
 
-When renewal is not possible, a Drive call returns 401 and the app reports that
-the session expired and asks the user to reload. The `beforeunload` guard warns
-if work is still dirty. That re-prompt is the accepted cost of having no
-backend, and self-renewal makes it rare.
+**The session is the refresh token, encrypted.** Rather than key a database row
+by a session id, the Worker seals the refresh token with AES-GCM under
+`SESSION_SECRET` and puts the ciphertext in the cookie. The Worker is stateless:
+no database to run, back up or migrate, and the design already works for many
+users. The trades, both acceptable now and both a KV binding away later:
+rotating the key signs everyone out, and a single user cannot be revoked
+server-side.
+
+The cookie is `HttpOnly`, `Secure`, `SameSite=Lax`, one year. `HttpOnly` is what
+makes this safer than the previous design: an XSS bug can no longer reach the
+credential. `SameSite=Lax` is required so the cookie survives Google's
+cross-site redirect back to `/auth/callback`. `Secure` is set unconditionally;
+browsers treat loopback as a trustworthy origin, so local development works.
+
+**In the browser.** The access token is still held in memory only, never in
+`localStorage`, `sessionStorage` or a cookie. Renewal is no longer an event to
+schedule: the store asks for a token before every request and reuses the cached
+one until a minute before expiry. A 401 from Drive forces one renewal and one
+retry, which distinguishes a stale token from a dead session. Only a second 401,
+or a 403, surfaces as signed out. There is no redirect, so no page reload, so
+nothing to interrupt an unsaved edit.
+
+The client secret and `SESSION_SECRET` live only in Worker secrets and in a
+git-ignored `.dev.vars`. Neither is ever sent to the browser.
 
 ### 5.2 Creating the file
 
@@ -359,9 +372,8 @@ Everything else, network failures included, propagates to a single top-level
 handler that renders the message in the status line and leaves the in-memory
 state untouched. Specific cases worth naming:
 
-- **401 or 403 on a request.** Reached only when self-renewal could not run —
-  unsaved work held it off, or the silent redirect failed. Report that the
-  session expired and prompt the user to reload and reconnect.
+- **401 or 403 on a request.** One renewal and retry happens first. If that
+  also fails the session is genuinely gone: offer to reconnect.
 - **404 on the file.** The file was deleted or unshared. Clear the cached
   `FileRef` and return to the create-or-pick screen, keeping the in-memory
   tasks so the user can save them somewhere new.

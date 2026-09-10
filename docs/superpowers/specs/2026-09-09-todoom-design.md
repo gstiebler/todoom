@@ -64,8 +64,9 @@ UI never see an access token.
 interface TodoStore {
   signIn(): Promise<void>
   signOut(): void
-  pickFile(): Promise<FileRef>        // Google Picker
   createFile(name: string): Promise<FileRef>
+  findOrCreateRootFile(name: string): Promise<FileRef>
+  findOrCreateSibling(ref: FileRef, name: string): Promise<FileRef>
   read(ref: FileRef): Promise<{ text: string; modifiedTime: string }>
   write(ref: FileRef, text: string): Promise<{ modifiedTime: string }>
 }
@@ -158,8 +159,7 @@ an authorized JavaScript origin. There is no client secret, because a public
 client does not have one.
 
 Scope: `https://www.googleapis.com/auth/drive.file` only. This grants access to
-files the app creates and files the user explicitly hands it through the Google
-Picker. Todoom can never see the rest of the user's Drive.
+files the app creates. Todoom can never see the rest of the user's Drive.
 
 The access token is short-lived, roughly one hour, and is held in memory only.
 It is never written to `localStorage`, because anything in `localStorage` is
@@ -168,20 +168,23 @@ expires, the app requests a new one silently; if Google declines, the user sees
 a "Reconnect to Drive" prompt. This re-prompt is the accepted cost of having no
 backend.
 
-### 5.2 Choosing the file
+### 5.2 Creating the file
 
-On first run the user has two paths.
+After the user authorizes Drive access, Todoom looks for a `todo.txt` that it
+previously created in the root of My Drive. If none exists, it creates one
+there automatically. There is no file picker or second setup step.
 
-- **Create.** Todoom creates `todo.txt` in the Drive root. Because the app
-  created it, `drive.file` covers it permanently.
-- **Open existing.** Todoom opens the Google Picker filtered to `text/plain`.
-  Picking a file grants the app access to that file alone.
+Because the app creates the file, `drive.file` covers it without granting
+access to unrelated Drive files. The file stays visible in My Drive and can be
+opened by text editors and other todo.txt clients.
 
 The chosen `FileRef` is stored in `localStorage` so subsequent visits skip this
-step. The file id is not a secret; it is useless without a token.
+lookup. If local storage is cleared or Todoom is opened in another browser, the
+app finds the file it created before creating a new one. The file id is not a
+secret; it is useless without a token.
 
 `done.txt` is created lazily in the same parent folder as `todo.txt`, the first
-time the user archives. Its id is cached alongside the todo file's.
+time the user archives.
 
 ### 5.3 Reading and writing
 
@@ -200,7 +203,8 @@ by a GitHub Actions workflow on every push to `main`. The published origin is
 `https://gstiebler.github.io`, with the app served under the `/todoom/` path.
 Vite's `base` is set to `/todoom/` so asset URLs resolve correctly.
 
-Two Google Cloud console entries must exist before sign-in works:
+The Google Drive API and these Google Cloud settings must exist before sign-in
+works:
 
 - Authorized JavaScript origin `https://gstiebler.github.io` for the deployed
   app, and `http://localhost:5173` for local development.
@@ -209,8 +213,9 @@ Two Google Cloud console entries must exist before sign-in works:
   account added as a test user, which avoids Google's verification review
   entirely for a single-user app.
 
-The OAuth client id is not a secret and is committed to the repository. There
-is no client secret, because a browser client does not have one.
+The OAuth client id is not a secret. It is injected into the build through the
+`VITE_GOOGLE_CLIENT_ID` repository variable. There is no API key or client
+secret.
 
 ## 6. Saving
 
@@ -356,7 +361,8 @@ state untouched. Specific cases worth naming:
 - **Deployment.** GitHub Pages at `https://gstiebler.github.io/todoom/`. See
   section 5.4.
 - **File count.** Exactly one `todo.txt` and one `done.txt`. No workspace
-  switcher, no multi-file support.
+  switcher, no multi-file support. Todoom finds or creates `todo.txt`
+  automatically in the visible My Drive root.
 - **Format.** Plain todo.txt rather than JSON. The deciding factor is
   interoperability: the file must remain readable by other todo.txt clients and
   editable by hand, which is the reason a file backend was chosen over a

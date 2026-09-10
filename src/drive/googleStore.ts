@@ -4,9 +4,9 @@ import { loadConfig, SCOPE } from './config'
 const FILES = 'https://www.googleapis.com/drive/v3/files'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
 
-// Minimal ambient types for the two Google SDKs loaded via <script> tags in
-// index.html (Google Identity Services and the legacy gapi loader/Picker).
-// These are the only shapes this file touches; no full @types package.
+// Minimal ambient types for Google Identity Services, loaded via a script tag
+// in index.html. These are the only shapes this file touches; no full @types
+// package is needed.
 
 interface GoogleTokenResponse {
   access_token: string
@@ -27,53 +27,13 @@ interface GoogleOAuth2 {
   revoke(token: string, callback: () => void): void
 }
 
-interface GooglePickerDoc {
-  id: string
-  name: string
-}
-
-interface GooglePickerData {
-  action: string
-  docs: GooglePickerDoc[]
-}
-
-interface GooglePickerView {
-  setMimeTypes(mimeTypes: string): GooglePickerView
-  setIncludeFolders(include: boolean): GooglePickerView
-}
-
-interface GooglePickerInstance {
-  setVisible(visible: boolean): void
-}
-
-interface GooglePickerBuilder {
-  setOAuthToken(token: string): GooglePickerBuilder
-  setDeveloperKey(key: string): GooglePickerBuilder
-  addView(view: GooglePickerView): GooglePickerBuilder
-  setCallback(callback: (data: GooglePickerData) => void): GooglePickerBuilder
-  build(): GooglePickerInstance
-}
-
-interface GooglePickerNamespace {
-  DocsView: new (viewId: unknown) => GooglePickerView
-  ViewId: { DOCS: unknown }
-  PickerBuilder: new () => GooglePickerBuilder
-  Action: { PICKED: string; CANCEL: string }
-}
-
 interface GoogleNamespace {
   accounts?: { oauth2: GoogleOAuth2 }
-  picker?: GooglePickerNamespace
-}
-
-interface GapiNamespace {
-  load(api: string, callback: () => void): void
 }
 
 declare global {
   interface Window {
     google?: GoogleNamespace
-    gapi?: GapiNamespace
   }
 }
 
@@ -173,34 +133,6 @@ export class GoogleDriveStore implements TodoStore {
     return response
   }
 
-  async pickFile(): Promise<FileRef | null> {
-    await waitFor(() => Boolean(window.gapi), 'Google API loader')
-    await new Promise<void>((resolve) => window.gapi!.load('picker', () => resolve()))
-    if (!this.token) throw new Error('not signed in')
-    const token = this.token
-    const picker = window.google!.picker!
-
-    return new Promise((resolve) => {
-      const view = new picker.DocsView(picker.ViewId.DOCS)
-        .setMimeTypes('text/plain')
-        .setIncludeFolders(true)
-      const instance = new picker.PickerBuilder()
-        .setOAuthToken(token)
-        .setDeveloperKey(this.config.apiKey)
-        .addView(view)
-        .setCallback((data) => {
-          if (data.action === picker.Action.PICKED) {
-            const doc = data.docs[0]
-            if (doc) resolve({ id: doc.id, name: doc.name })
-          } else if (data.action === picker.Action.CANCEL) {
-            resolve(null)
-          }
-        })
-        .build()
-      instance.setVisible(true)
-    })
-  }
-
   async createFile(name: string, parent?: string): Promise<FileRef> {
     const metadata: Record<string, unknown> = { name, mimeType: 'text/plain' }
     if (parent) metadata['parents'] = [parent]
@@ -211,6 +143,21 @@ export class GoogleDriveStore implements TodoStore {
     })
     const json = (await response.json()) as DriveFile
     return { id: json.id, name: json.name }
+  }
+
+  async findOrCreateRootFile(name: string): Promise<FileRef> {
+    const query = [
+      `name = '${quoteForQuery(name)}'`,
+      'trashed = false',
+      "'root' in parents",
+    ].join(' and ')
+    const response = await this.request(
+      `${FILES}?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=1`,
+    )
+    const json = (await response.json()) as DriveFileList
+    const found = json.files?.[0]
+    if (found) return { id: found.id, name: found.name }
+    return this.createFile(name, 'root')
   }
 
   private async parentOf(ref: FileRef): Promise<string | undefined> {

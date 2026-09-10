@@ -1,7 +1,7 @@
-import type { FileRef } from '../drive/store'
+import type { FileRef, TodoStore } from '../drive/store'
 import type { TodoomApp } from './state'
 
-const KEY = 'todoom.fileRef'
+const KEY = 'todoom.rootFileRef'
 
 export function saveFileRef(ref: FileRef): void {
   localStorage.setItem(KEY, JSON.stringify(ref))
@@ -28,6 +28,16 @@ export function loadFileRef(): FileRef | null {
 
 export function clearFileRef(): void {
   localStorage.removeItem(KEY)
+}
+
+export async function loadOrCreateTodoFile(
+  store: Pick<TodoStore, 'findOrCreateRootFile'>,
+): Promise<FileRef> {
+  const saved = loadFileRef()
+  if (saved) return saved
+  const created = await store.findOrCreateRootFile('todo.txt')
+  saveFileRef(created)
+  return created
 }
 
 export function createDebouncedSaver(

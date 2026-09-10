@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { saveFileRef, loadFileRef, clearFileRef, createDebouncedSaver } from './session'
+import {
+  saveFileRef,
+  loadFileRef,
+  clearFileRef,
+  loadOrCreateTodoFile,
+  createDebouncedSaver,
+} from './session'
 import { TodoomApp } from './state'
 import { FakeStore } from '../drive/fakeStore'
 
@@ -24,8 +30,28 @@ describe('file ref persistence', () => {
   })
 
   it('returns null for corrupt storage', () => {
-    localStorage.setItem('todoom.fileRef', 'not json')
+    localStorage.setItem('todoom.rootFileRef', 'not json')
     expect(loadFileRef()).toBeNull()
+  })
+
+  it('finds or creates todo.txt automatically and remembers it', async () => {
+    const store = new FakeStore()
+    await store.signIn()
+
+    const ref = await loadOrCreateTodoFile(store)
+
+    expect(ref.name).toBe('todo.txt')
+    expect(loadFileRef()).toEqual(ref)
+    expect(await loadOrCreateTodoFile(store)).toEqual(ref)
+  })
+
+  it('uses a remembered file without another Drive lookup', async () => {
+    const saved = { id: 'abc', name: 'todo.txt' }
+    saveFileRef(saved)
+    const findOrCreateRootFile = vi.fn()
+
+    await expect(loadOrCreateTodoFile({ findOrCreateRootFile })).resolves.toEqual(saved)
+    expect(findOrCreateRootFile).not.toHaveBeenCalled()
   })
 })
 

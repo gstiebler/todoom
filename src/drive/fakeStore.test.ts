@@ -22,6 +22,14 @@ describe('FakeStore', () => {
     expect((await s.read(ref)).text).toBe('')
   })
 
+  it('returns the same root file on repeat find-or-create calls', async () => {
+    const s = new FakeStore()
+    await s.signIn()
+    const first = await s.findOrCreateRootFile('todo.txt')
+    const second = await s.findOrCreateRootFile('todo.txt')
+    expect(second).toEqual(first)
+  })
+
   it('writes and reads back', async () => {
     const s = new FakeStore()
     await s.signIn()

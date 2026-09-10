@@ -116,7 +116,7 @@ describe('save', () => {
     app.addTask('Call plumber')
     await app.save()
     expect((await store.read(ref)).text).toContain('Call plumber')
-    const conflict = await store.pickFileNamedLike('todo.conflict-')
+    const conflict = await store.findFileNamedLike('todo.conflict-')
     expect(conflict).not.toBeNull()
     expect((await store.read(conflict!)).text).toBe('Edited elsewhere\n')
   })

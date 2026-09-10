@@ -59,11 +59,11 @@ export class FakeStore implements TodoStore {
     this.signedIn = false
   }
 
-  async pickFile(): Promise<FileRef | null> {
+  async findOrCreateRootFile(name: string): Promise<FileRef> {
     for (const entry of this.files.values()) {
-      return { id: entry.id, name: entry.name }
+      if (entry.name === name) return { id: entry.id, name: entry.name }
     }
-    return null
+    return this.createFile(name)
   }
 
   async createFile(name: string): Promise<FileRef> {
@@ -125,7 +125,7 @@ export class FakeStore implements TodoStore {
     return this.require(ref).modifiedTime
   }
 
-  async pickFileNamedLike(prefix: string): Promise<FileRef | null> {
+  async findFileNamedLike(prefix: string): Promise<FileRef | null> {
     for (const entry of this.files.values()) {
       if (entry.name.startsWith(prefix)) return { id: entry.id, name: entry.name }
     }

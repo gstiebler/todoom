@@ -5,7 +5,7 @@ import type { FileRef, TodoStore } from './drive/store'
 import { render } from './ui/render'
 import { filterFromQuery } from './app/urlState'
 import { syncFilterHistory } from './app/urlHistory'
-import { clearFileRef, createDebouncedSaver, loadFileRef, saveFileRef } from './app/session'
+import { clearFileRef, createDebouncedSaver, loadOrCreateTodoFile } from './app/session'
 
 const root = document.querySelector<HTMLDivElement>('#app')
 if (!root) throw new Error('missing #app element')
@@ -89,37 +89,13 @@ function start(store: TodoStore, ref: FileRef): void {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('404')) {
         clearFileRef()
-        showSignIn('That file is gone from Drive. Choose another.', [
+        showSignIn('That file is gone from Drive. Reload to create a new todo.txt.', [
           ['Reload', () => window.location.reload()],
         ])
         return
       }
       showSignIn(message, [['Retry', () => window.location.reload()]])
     })
-}
-
-async function chooseFile(store: TodoStore): Promise<void> {
-  showSignIn('Choose where your tasks live.', [
-    [
-      'Create todo.txt in Drive',
-      () => {
-        void store.createFile('todo.txt').then((ref) => {
-          saveFileRef(ref)
-          start(store, ref)
-        })
-      },
-    ],
-    [
-      'Open an existing file',
-      () => {
-        void store.pickFile().then((ref) => {
-          if (!ref) return
-          saveFileRef(ref)
-          start(store, ref)
-        })
-      },
-    ],
-  ])
 }
 
 function main(): void {
@@ -139,11 +115,8 @@ function main(): void {
       () => {
         void store
           .signIn()
-          .then(() => {
-            const ref = loadFileRef()
-            if (ref) start(store, ref)
-            else void chooseFile(store)
-          })
+          .then(() => loadOrCreateTodoFile(store))
+          .then((ref) => start(store, ref))
           .catch((error: unknown) => {
             showSignIn(error instanceof Error ? error.message : String(error), [
               ['Retry', () => window.location.reload()],

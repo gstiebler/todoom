@@ -14,7 +14,13 @@
     "binding": "ASSETS",
     // The app is a single-page app with no router, but a stray deep link
     // should still land on it rather than a 404.
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // Static assets are served BEFORE the Worker, and single-page-application
+    // handling answers every unmatched document request with index.html. That
+    // would swallow the auth routes: a browser navigating to /auth/start would
+    // be handed the app instead of the redirect to Google. These prefixes must
+    // reach the Worker first.
+    "run_worker_first": ["/auth/*", "/api/*"]
   },
   "observability": {
     "enabled": true

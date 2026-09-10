@@ -71,12 +71,25 @@ async function completeSignIn(request: Request, url: URL, env: Env): Promise<Res
     return redirect(`/?error=${encodeURIComponent(reason)}`, [clearCookie(STATE_COOKIE)])
   }
 
-  const credentials = await exchangeCode({
-    clientId: env.GOOGLE_CLIENT_ID,
-    clientSecret: env.GOOGLE_CLIENT_SECRET,
-    redirectUri: redirectUri(url),
-    code,
-  })
+  // Google rejects an exchange for reasons the user can act on — a redirect URI
+  // that is not registered, a withdrawn grant, a rotated secret. Letting that
+  // throw gives them the platform's 500 page and no idea what went wrong, so
+  // the reason is carried back to the app instead. The Worker's log still has
+  // the full error.
+  let credentials
+  try {
+    credentials = await exchangeCode({
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      redirectUri: redirectUri(url),
+      code,
+    })
+  } catch (cause) {
+    console.error('code exchange failed', cause)
+    const reason = cause instanceof Error ? cause.message : 'exchange_failed'
+    return redirect(`/?error=${encodeURIComponent(reason)}`, [clearCookie(STATE_COOKIE)])
+  }
+
   const sealed = await seal(credentials.refreshToken, env.SESSION_SECRET)
   return redirect('/', [
     clearCookie(STATE_COOKIE),

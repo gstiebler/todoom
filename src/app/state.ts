@@ -1,11 +1,11 @@
 import { makeAutoObservable, runInAction } from 'mobx'
 import type { Task } from '../core/types'
 import type { Filter } from '../core/query'
-import type { FileRef, TodoStore } from '../drive/store'
+import type { DriveEntry, FileRef, TodoStore } from '../drive/store'
 import type { Workspace } from './session'
 import { parseFile, parseLine } from '../core/parse'
 import { formatFile } from '../core/format'
-import { complete, uncomplete, createTask } from '../core/mutate'
+import { complete, uncomplete, createTask, addAttachment, removeAttachment } from '../core/mutate'
 import { nextOccurrence } from '../core/recurrence'
 import { emptyFilter, filterTasks, sortTasks } from '../core/query'
 import { splitCompleted } from '../core/archive'
@@ -32,6 +32,9 @@ export class TodoomApp {
     error: null,
     loadedModifiedTime: null,
   }
+
+  /** Every file in the Todoom folder we know the name and link of. */
+  readonly attachmentsById = new Map<string, DriveEntry>()
 
   private workspace: Workspace | null = null
   private revision = 0
@@ -66,6 +69,69 @@ export class TodoomApp {
     return this.workspace.folder
   }
 
+  /** Names and links for the attachments, read from the folder in one call. */
+  async loadAttachments(): Promise<void> {
+    const entries = await this.store.listFiles(this.folder)
+    runInAction(() => {
+      for (const entry of entries) this.attachmentsById.set(entry.id, entry)
+    })
+  }
+
+  /** Uploads each file to the Todoom folder and returns its Drive id. */
+  async uploadFiles(files: File[]): Promise<string[]> {
+    const folder = this.folder
+    const entries: DriveEntry[] = []
+    for (const file of files) entries.push(await this.store.uploadFile(folder, file))
+    runInAction(() => {
+      for (const entry of entries) this.attachmentsById.set(entry.id, entry)
+    })
+    return entries.map((entry) => entry.id)
+  }
+
+  /**
+   * Uploads first and edits the line only once every file has an id, so a
+   * half-failed batch leaves no reference to a file that isn't there.
+   */
+  async attachFiles(index: number, files: File[]): Promise<void> {
+    if (!this.state.tasks[index]) return
+    try {
+      const ids = await this.uploadFiles(files)
+      runInAction(() => {
+        const task = this.state.tasks[index]
+        if (!task) return
+        this.state.tasks[index] = ids.reduce(addAttachment, task)
+        this.markDirty()
+      })
+    } catch (error) {
+      runInAction(() => {
+        this.state.error = error instanceof Error ? error.message : String(error)
+      })
+      return
+    }
+    await this.save()
+  }
+
+  /** Drops the id from the line and moves the Drive file to the trash. */
+  async detachFile(index: number, id: string): Promise<void> {
+    const task = this.state.tasks[index]
+    if (!task) return
+    runInAction(() => {
+      this.state.tasks[index] = removeAttachment(task, id)
+      this.markDirty()
+    })
+    try {
+      await this.store.trashFile(id)
+      runInAction(() => {
+        this.attachmentsById.delete(id)
+      })
+    } catch (error) {
+      runInAction(() => {
+        this.state.error = error instanceof Error ? error.message : String(error)
+      })
+    }
+    await this.save()
+  }
+
   async load(workspace: Workspace): Promise<void> {
     const { text, modifiedTime } = await this.store.read(workspace.todo)
     runInAction(() => {
@@ -75,6 +141,7 @@ export class TodoomApp {
       this.state.saveState = 'idle'
       this.state.error = null
     })
+    await this.loadAttachments()
   }
 
   addTask(input: string): void {

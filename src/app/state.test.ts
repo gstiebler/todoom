@@ -243,3 +243,48 @@ describe('observability', () => {
     expect(seen).toEqual(['house'])
   })
 })
+
+function upload(name: string, text = 'hello'): File {
+  return new File([text], name, { type: 'text/plain' })
+}
+
+describe('attachments', () => {
+  it('uploads a file and appends its id to the line', async () => {
+    const { app } = await setup()
+    await app.attachFiles(0, [upload('spec.pdf')])
+    const ids = app.state.tasks[0]?.attachments ?? []
+    expect(ids).toHaveLength(1)
+    expect(app.attachmentsById.get(ids[0] as string)?.name).toBe('spec.pdf')
+  })
+
+  it('lists the folder once at load and knows the names', async () => {
+    const { app, store, workspace } = await setup()
+    await store.uploadFile(workspace.folder, upload('notes.txt'))
+    await app.loadAttachments()
+    const names = [...app.attachmentsById.values()].map((entry) => entry.name)
+    expect(names).toContain('notes.txt')
+  })
+
+  it('detaching removes the id and trashes the Drive file', async () => {
+    const { app, store } = await setup()
+    await app.attachFiles(0, [upload('spec.pdf')])
+    const id = app.state.tasks[0]?.attachments[0] as string
+    await app.detachFile(0, id)
+    expect(app.state.tasks[0]?.attachments).toEqual([])
+    expect(store.isTrashed(id)).toBe(true)
+  })
+
+  it('an upload failure lands in state.error and leaves the line alone', async () => {
+    const { app, store } = await setup()
+    store.failNextUploads(1)
+    await app.attachFiles(0, [upload('spec.pdf')])
+    expect(app.state.error).toContain('spec.pdf')
+    expect(app.state.tasks[0]?.attachments).toEqual([])
+  })
+
+  it('uploadFiles returns one id per file', async () => {
+    const { app } = await setup()
+    const ids = await app.uploadFiles([upload('a.txt'), upload('b.txt')])
+    expect(ids).toHaveLength(2)
+  })
+})

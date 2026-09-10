@@ -5,7 +5,26 @@ import type { FileRef, TodoStore } from './drive/store'
 import { render } from './ui/render'
 import { filterFromQuery } from './app/urlState'
 import { syncFilterHistory } from './app/urlHistory'
-import { clearFileRef, createDebouncedSaver, loadOrCreateTodoFile } from './app/session'
+import {
+  clearFileRef,
+  createDebouncedSaver,
+  loadFileRef,
+  loadOrCreateTodoFile,
+} from './app/session'
+import { buildAuthUrl, parseAuthFragment, randomState } from './drive/redirectAuth'
+import { SCOPE } from './drive/config'
+
+// Keys are per-tab and hold no credential: a CSRF nonce, the query string to
+// restore across the round-trip, and a guard against redirect loops.
+const STATE_KEY = 'todoom.authState'
+const RETURN_KEY = 'todoom.authReturn'
+const TRIED_KEY = 'todoom.silentAuthTried'
+
+// Must match an Authorized redirect URI on the OAuth client exactly. BASE_URL
+// is the deployed base path, so this is stable whatever page the user landed on.
+function redirectUri(): string {
+  return new URL(import.meta.env.BASE_URL, window.location.origin).href
+}
 
 const root = document.querySelector<HTMLDivElement>('#app')
 if (!root) throw new Error('missing #app element')
@@ -115,25 +134,78 @@ function main(): void {
     ])
   }
 
+  function beginAuth(mode: 'none' | 'interactive'): void {
+    const state = randomState()
+    sessionStorage.setItem(STATE_KEY, state)
+    sessionStorage.setItem(RETURN_KEY, window.location.search)
+    if (mode === 'none') sessionStorage.setItem(TRIED_KEY, '1')
+    window.location.assign(
+      buildAuthUrl({
+        clientId: store.clientId(),
+        redirectUri: redirectUri(),
+        scope: SCOPE,
+        state,
+        mode,
+      }),
+    )
+  }
+
   function connect(): void {
-    void store
-      .signIn()
-      .then(() => loadOrCreateTodoFile(store))
-      .then((ref) => start(store, ref))
-      .catch(failed)
+    // An explicit click is a fresh mandate: let the silent path be tried again
+    // on the next load even if it failed earlier in this tab.
+    sessionStorage.removeItem(TRIED_KEY)
+    showSignIn('Taking you to Google\u2026', [])
+    beginAuth('interactive')
   }
 
   function offerConnect(reason?: string): void {
     const base = 'Todoom keeps your tasks in a todo.txt file in your Google Drive.'
-    showSignIn(reason ? `${base} (Reconnecting failed: ${reason})` : base, [
-      ['Connect to Drive', connect],
-    ])
+    showSignIn(reason ? `${base} (${reason})` : base, [['Connect to Drive', connect]])
   }
 
-  // Google's token flow always opens a popup, and a popup that is not opened
-  // from a user gesture is blocked. There is therefore no way to obtain a Drive
-  // token on page load, however live the Google session is: the click is
-  // mandatory, not a design choice.
+  function open(): void {
+    loadOrCreateTodoFile(store)
+      .then((ref) => start(store, ref))
+      .catch(failed)
+  }
+
+  const response = parseAuthFragment(window.location.hash)
+  if (response.kind !== 'none') {
+    const expected = sessionStorage.getItem(STATE_KEY)
+    const search = sessionStorage.getItem(RETURN_KEY) ?? ''
+    sessionStorage.removeItem(STATE_KEY)
+    sessionStorage.removeItem(RETURN_KEY)
+
+    // Strip the token out of the address bar before anything else runs, and put
+    // back the filter query string the redirect discarded.
+    window.history.replaceState(null, '', window.location.pathname + search)
+
+    if (!expected || response.state !== expected) {
+      // A response we did not ask for: someone else's token, or a stale tab.
+      offerConnect('That sign-in response did not match this tab.')
+      return
+    }
+    if (response.kind === 'error') {
+      // prompt=none reports login_required or interaction_required when the
+      // Google session or the grant is gone. Both mean "ask properly".
+      offerConnect(`Automatic sign-in failed: ${response.error}`)
+      return
+    }
+    store.setToken(response.accessToken)
+    sessionStorage.removeItem(TRIED_KEY)
+    open()
+    return
+  }
+
+  // A saved file reference means this browser has connected before, so Google
+  // will recognise the grant and bounce straight back. The guard stops a failed
+  // attempt from redirecting on every load.
+  if (loadFileRef() && !sessionStorage.getItem(TRIED_KEY)) {
+    showSignIn('Signing in\u2026', [])
+    beginAuth('none')
+    return
+  }
+
   offerConnect()
 }
 

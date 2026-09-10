@@ -162,11 +162,29 @@ Scope: `https://www.googleapis.com/auth/drive.file` only. This grants access to
 files the app creates. Todoom can never see the rest of the user's Drive.
 
 The access token is short-lived, roughly one hour, and is held in memory only.
-It is never written to `localStorage`, because anything in `localStorage` is
-readable by any script that gets injected into the page. When the token
-expires, the app requests a new one silently; if Google declines, the user sees
-a "Reconnect to Drive" prompt. This re-prompt is the accepted cost of having no
-backend.
+It is never written to `localStorage`, `sessionStorage` or a cookie, because
+anything there is readable by any script that gets injected into the page.
+
+Sign-in uses the implicit flow driven by a **top-level redirect**, not the
+Google Identity Services popup. The popup is opened by script, so a browser
+blocks it unless a click is in scope, which makes automatic sign-in on page
+load impossible however live the Google session is. A top-level navigation is a
+first-party context and carries the user's Google session cookie, so with
+`prompt=none` Google recognises an existing grant and redirects straight back
+with no UI. A returning visitor lands on their task list without clicking.
+
+**Exception to "never in a URL".** The implicit flow returns the token in the
+URL fragment. This is accepted here: a fragment is never transmitted — it
+appears in no request, server log or `Referer` header — and the app strips it
+with `history.replaceState` before any other code runs, restoring the filter
+query string the redirect discarded. A `state` nonce in `sessionStorage` is
+checked on return, so a response this tab did not initiate is refused.
+
+When the token expires, a Drive call returns 401 and the app reports that the
+session expired and asks the user to reload. It does not renew automatically:
+renewal means navigating to Google, which would discard any unsaved edit. The
+`beforeunload` guard warns if work is still dirty. This re-prompt is the
+accepted cost of having no backend.
 
 ### 5.2 Creating the file
 
@@ -331,7 +349,8 @@ Everything else, network failures included, propagates to a single top-level
 handler that renders the message in the status line and leaves the in-memory
 state untouched. Specific cases worth naming:
 
-- **401 or 403 on a request.** Try one silent token refresh, then prompt to
+- **401 or 403 on a request.** Report that the session expired and ask the user
+  to reload; renewing would navigate to Google and discard unsaved edits. Prompt to
   reconnect.
 - **404 on the file.** The file was deleted or unshared. Clear the cached
   `FileRef` and return to the create-or-pick screen, keeping the in-memory

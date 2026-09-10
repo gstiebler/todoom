@@ -1,47 +1,8 @@
 import type { FileRef, ReadResult, TodoStore } from './store'
-import { loadConfig, SCOPE } from './config'
+import { loadConfig } from './config'
 
 const FILES = 'https://www.googleapis.com/drive/v3/files'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
-
-// Minimal ambient types for Google Identity Services, loaded via a script tag
-// in index.html. These are the only shapes this file touches; no full @types
-// package is needed.
-
-interface GoogleTokenResponse {
-  access_token: string
-  error?: string
-}
-
-interface GoogleTokenError {
-  type: string
-  message?: string
-}
-
-interface GoogleTokenClient {
-  callback: (response: GoogleTokenResponse) => void
-  requestAccessToken: (options: { prompt: '' | 'consent' }) => void
-}
-
-interface GoogleOAuth2 {
-  initTokenClient(config: {
-    client_id: string
-    scope: string
-    callback: (response: GoogleTokenResponse) => void
-    error_callback?: (error: GoogleTokenError) => void
-  }): GoogleTokenClient
-  revoke(token: string, callback: () => void): void
-}
-
-interface GoogleNamespace {
-  accounts?: { oauth2: GoogleOAuth2 }
-}
-
-declare global {
-  interface Window {
-    google?: GoogleNamespace
-  }
-}
 
 // Minimal shapes for the Drive REST API responses this file reads.
 
@@ -62,18 +23,6 @@ interface DriveFileModifiedTime {
   modifiedTime: string
 }
 
-function waitFor(check: () => boolean, what: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const started = Date.now()
-    const tick = () => {
-      if (check()) return resolve()
-      if (Date.now() - started > 10000) return reject(new Error(`timed out loading ${what}`))
-      setTimeout(tick, 50)
-    }
-    tick()
-  })
-}
-
 // Drive query strings are single-quoted; escape backslashes and quotes so a
 // filename can never terminate the literal and inject clauses.
 function quoteForQuery(value: string): string {
@@ -82,59 +31,49 @@ function quoteForQuery(value: string): string {
 
 export class GoogleDriveStore implements TodoStore {
   private token: string | null = null
-  private tokenClient: GoogleTokenClient | null = null
   private config = loadConfig()
-  private onTokenError: ((error: Error) => void) | null = null
+
+  clientId(): string {
+    return this.config.clientId
+  }
 
   isSignedIn(): boolean {
     return this.token !== null
   }
 
-  private async ensureTokenClient(): Promise<void> {
-    if (this.tokenClient) return
-    await waitFor(() => Boolean(window.google?.accounts?.oauth2), 'Google Identity Services')
-    this.tokenClient = window.google!.accounts!.oauth2.initTokenClient({
-      client_id: this.config.clientId,
-      scope: SCOPE,
-      callback: () => {},
-      error_callback: (error) => this.onTokenError?.(new Error(error.type)),
-    })
+  // The token is supplied by the redirect flow in main.ts and held in memory
+  // only, never in localStorage, sessionStorage or a cookie. See spec §5.1.
+  setToken(token: string): void {
+    this.token = token
   }
 
   async signIn(): Promise<void> {
-    await this.ensureTokenClient()
-    await this.requestToken('consent')
-  }
-
-  private requestToken(prompt: '' | 'consent'): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const tokenClient = this.tokenClient!
-      this.onTokenError = reject
-      tokenClient.callback = (response) => {
-        if (response.error) return reject(new Error(response.error))
-        this.token = response.access_token
-        resolve()
-      }
-      tokenClient.requestAccessToken({ prompt })
-    })
+    throw new Error('Todoom signs in by redirect; call startRedirectSignIn instead.')
   }
 
   signOut(): void {
-    if (this.token && window.google?.accounts?.oauth2) {
-      window.google.accounts.oauth2.revoke(this.token, () => {})
-    }
+    const token = this.token
     this.token = null
+    if (!token) return
+    // Best effort: the page is usually navigating away, and a failed revoke
+    // costs nothing because the token expires within the hour regardless.
+    void fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    }).catch(() => {})
   }
 
-  private async request(url: string, init: RequestInit = {}, retry = true): Promise<Response> {
+  private async request(url: string, init: RequestInit = {}): Promise<Response> {
     if (!this.token) throw new Error('not signed in')
     const headers = new Headers(init.headers)
     headers.set('Authorization', `Bearer ${this.token}`)
     const response = await fetch(url, { ...init, headers })
-    if ((response.status === 401 || response.status === 403) && retry) {
-      await this.ensureTokenClient()
-      await this.requestToken('')
-      return this.request(url, init, false)
+    // Renewing the token means navigating to Google, which would discard any
+    // unsaved edit. Report the expiry instead and let the user reload when the
+    // work is safe; the beforeunload guard warns if anything is still dirty.
+    if (response.status === 401 || response.status === 403) {
+      this.token = null
+      throw new Error('Your Google session expired. Reload the page to reconnect.')
     }
     if (!response.ok) {
       throw new Error(`Drive request failed: ${response.status} ${await response.text()}`)

@@ -1,3 +1,4 @@
+import { reaction } from 'mobx'
 import { describe, it, expect } from 'vitest'
 import { TodoomApp } from './state'
 import { FakeStore } from '../drive/fakeStore'
@@ -211,15 +212,34 @@ describe('archive', () => {
   })
 })
 
-describe('subscribe', () => {
-  it('notifies listeners on change', async () => {
+describe('observability', () => {
+  it('reacts when the task list changes', async () => {
     const { app } = await setup()
     let calls = 0
-    const unsubscribe = app.subscribe(() => { calls += 1 })
+    const stop = reaction(
+      () => app.state.tasks.length,
+      () => {
+        calls += 1
+      },
+    )
     app.addTask('Call plumber')
     expect(calls).toBe(1)
-    unsubscribe()
+    stop()
     app.addTask('Another')
     expect(calls).toBe(1)
+  })
+
+  it('reacts when the filter changes', async () => {
+    const { app } = await setup()
+    let seen: string[] = []
+    const stop = reaction(
+      () => app.state.filter,
+      (filter) => {
+        seen = filter.projects
+      },
+    )
+    app.setFilter({ projects: ['house'] })
+    stop()
+    expect(seen).toEqual(['house'])
   })
 })

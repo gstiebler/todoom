@@ -1,4 +1,5 @@
 import './ui/styles.css'
+import { reaction } from 'mobx'
 import { createRoot } from 'react-dom/client'
 import { TodoomApp } from './app/state'
 import { GoogleDriveStore } from './drive/googleStore'
@@ -32,17 +33,22 @@ function start(store: TodoStore, ref: FileRef): void {
   app.setFilter(filterFromQuery(window.location.search))
   let lastSyncedFilter = app.state.filter
 
-  const syncUrl = () => {
-    syncFilterHistory(lastSyncedFilter, app.state.filter)
-    lastSyncedFilter = app.state.filter
-  }
-
-  // App subscribes to the same store, so every mutation already redraws.
-  // This subscription only keeps the URL and the autosave timer in step.
-  app.subscribe(() => {
-    if (app.state.saveState === 'dirty') saver.schedule()
-    syncUrl()
-  })
+  // The components observe the store themselves, so these reactions only carry
+  // the two side effects: push the filter into the address bar, and start the
+  // autosave timer once an edit lands.
+  reaction(
+    () => app.state.filter,
+    (filter) => {
+      syncFilterHistory(lastSyncedFilter, filter)
+      lastSyncedFilter = filter
+    },
+  )
+  reaction(
+    () => app.state.saveState,
+    (saveState) => {
+      if (saveState === 'dirty') saver.schedule()
+    },
+  )
 
   window.addEventListener('popstate', () => {
     app.setFilter(filterFromQuery(window.location.search))

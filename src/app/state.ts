@@ -1,3 +1,4 @@
+import { makeAutoObservable, runInAction } from 'mobx'
 import type { Task } from '../core/types'
 import type { Filter } from '../core/query'
 import type { FileRef, TodoStore } from '../drive/store'
@@ -31,40 +32,22 @@ export class TodoomApp {
     loadedModifiedTime: null,
   }
 
-  private listeners = new Set<() => void>()
   private ref: FileRef | null = null
   private revision = 0
-  private version = 0
 
   constructor(
     private store: TodoStore,
     private today: () => string,
-  ) {}
-
-  // Bound so React's useSyncExternalStore sees a stable pair and does not
-  // resubscribe on every render.
-  subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener)
-    return () => {
-      this.listeners.delete(listener)
-    }
-  }
-
-  // `state` is mutated in place, so its identity never changes and cannot tell
-  // a renderer that anything happened. This counter can. It is not `revision`,
-  // which tracks unsaved edits for the save/conflict logic and deliberately
-  // stays put on setFilter and load.
-  getVersion = (): number => this.version
-
-  private notify(): void {
-    this.version += 1
-    for (const listener of this.listeners) listener()
+  ) {
+    // The Drive client and the clock are collaborators, not state; leave them
+    // as they are. Everything else is observable, so mutating `state` in place
+    // is what tells the UI something happened.
+    makeAutoObservable<TodoomApp, 'store' | 'today'>(this, { store: false, today: false })
   }
 
   private markDirty(): void {
     this.revision += 1
     this.state.saveState = 'dirty'
-    this.notify()
   }
 
   private requireRef(): FileRef {
@@ -74,12 +57,13 @@ export class TodoomApp {
 
   async load(ref: FileRef): Promise<void> {
     const { text, modifiedTime } = await this.store.read(ref)
-    this.ref = ref
-    this.state.tasks = parseFile(text)
-    this.state.loadedModifiedTime = modifiedTime
-    this.state.saveState = 'idle'
-    this.state.error = null
-    this.notify()
+    runInAction(() => {
+      this.ref = ref
+      this.state.tasks = parseFile(text)
+      this.state.loadedModifiedTime = modifiedTime
+      this.state.saveState = 'idle'
+      this.state.error = null
+    })
   }
 
   addTask(input: string): void {
@@ -121,7 +105,6 @@ export class TodoomApp {
 
   setFilter(patch: Partial<Filter>): void {
     this.state.filter = { ...this.state.filter, ...patch }
-    this.notify()
   }
 
   visibleTasks(): Task[] {
@@ -137,7 +120,6 @@ export class TodoomApp {
     const ref = this.requireRef()
     this.state.saveState = 'saving'
     this.state.error = null
-    this.notify()
 
     try {
       const current = await this.store.getModifiedTime(ref)
@@ -147,13 +129,16 @@ export class TodoomApp {
       const revisionAtWrite = this.revision
       const payload = formatFile(this.state.tasks)
       const { modifiedTime } = await this.store.write(ref, payload)
-      this.state.loadedModifiedTime = modifiedTime
-      this.state.saveState = revisionAtWrite === this.revision ? 'saved' : 'dirty'
+      runInAction(() => {
+        this.state.loadedModifiedTime = modifiedTime
+        this.state.saveState = revisionAtWrite === this.revision ? 'saved' : 'dirty'
+      })
     } catch (error) {
-      this.state.saveState = 'error'
-      this.state.error = error instanceof Error ? error.message : String(error)
+      runInAction(() => {
+        this.state.saveState = 'error'
+        this.state.error = error instanceof Error ? error.message : String(error)
+      })
     }
-    this.notify()
   }
 
   private async writeConflictCopy(ref: FileRef): Promise<void> {
@@ -181,9 +166,11 @@ export class TodoomApp {
     await this.store.write(done, existing + formatFile(archive))
 
     const archivedTasks = new Set(archive)
-    this.state.tasks = this.state.tasks.filter((task) => !archivedTasks.has(task))
-    this.revision += 1
-    this.state.saveState = 'dirty'
+    runInAction(() => {
+      this.state.tasks = this.state.tasks.filter((task) => !archivedTasks.has(task))
+      this.revision += 1
+      this.state.saveState = 'dirty'
+    })
     await this.save()
     if (isErrorState(this.state)) {
       throw new Error(this.state.error ?? 'failed to save todo.txt after archiving')

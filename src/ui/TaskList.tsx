@@ -1,3 +1,4 @@
+import { observer } from 'mobx-react-lite'
 import { useRef, useState } from 'react'
 import type { Task } from '../core/types'
 import type { TodoomApp } from '../app/state'
@@ -34,7 +35,15 @@ function Description({ task, onClick }: { task: Task; onClick: () => void }) {
   )
 }
 
-function TaskRow({ app, task, today }: { app: TodoomApp; task: Task; today: string }) {
+const TaskRow = observer(function TaskRow({
+  app,
+  task,
+  today,
+}: {
+  app: TodoomApp
+  task: Task
+  today: string
+}) {
   const [draft, setDraft] = useState<string | null>(null)
   // Escape unmounts the editor, and an unmounted input must not commit whatever
   // it happened to be holding.
@@ -88,9 +97,9 @@ function TaskRow({ app, task, today }: { app: TodoomApp; task: Task; today: stri
       </button>
     </li>
   )
-}
+})
 
-export function TaskList({ app, today }: { app: TodoomApp; today: string }) {
+export const TaskList = observer(function TaskList({ app, today }: { app: TodoomApp; today: string }) {
   const visible = app.visibleTasks()
   if (visible.length === 0) return <p className="empty">Nothing here.</p>
 
@@ -101,4 +110,4 @@ export function TaskList({ app, today }: { app: TodoomApp; today: string }) {
       ))}
     </ul>
   )
-}
+})

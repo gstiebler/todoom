@@ -1,7 +1,8 @@
+import { observer } from 'mobx-react-lite'
 import { useState } from 'react'
 import type { TodoomApp } from '../app/state'
 
-export function AddForm({ app }: { app: TodoomApp }) {
+export const AddForm = observer(function AddForm({ app }: { app: TodoomApp }) {
   const [text, setText] = useState('')
 
   return (
@@ -22,4 +23,4 @@ export function AddForm({ app }: { app: TodoomApp }) {
       <button>Add</button>
     </form>
   )
-}
+})

@@ -1,3 +1,4 @@
+import { observer } from 'mobx-react-lite'
 import type { DueView } from '../core/query'
 import type { TodoomApp } from '../app/state'
 import { collectProjects, collectContexts, collectPriorities } from '../core/query'
@@ -57,7 +58,7 @@ function Chips({
   )
 }
 
-export function Sidebar({ app }: { app: TodoomApp }) {
+export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
   const { tasks, filter, saveState, error } = app.state
   const failed = saveState === 'error'
 
@@ -133,4 +134,4 @@ export function Sidebar({ app }: { app: TodoomApp }) {
       </button>
     </aside>
   )
-}
+})

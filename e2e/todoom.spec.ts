@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const PAGE = '/todoom/e2e/fixture.html'
+const PAGE = '/e2e/fixture.html'
 
 test('lists seeded tasks in priority order', async ({ page }) => {
   await page.goto(PAGE)
@@ -49,6 +49,6 @@ test('archives completed tasks', async ({ page }) => {
   await page.goto(PAGE)
   await page.locator('.task', { hasText: 'Buy milk' }).locator('.task__check').click()
   await page.getByRole('button', { name: 'Archive completed', exact: true }).click()
-  await page.getByRole('button', { name: 'Completed', exact: true }).click()
+  await page.getByRole('button', { name: 'Show completed', exact: true }).click()
   await expect(page.locator('.task')).toHaveCount(1)
 })

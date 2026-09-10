@@ -170,3 +170,30 @@ describe('stranded filter chips', () => {
     expect(labels(root)).toContain('(A)')
   })
 })
+
+describe('sidebar layout', () => {
+  it('keeps the completed toggle out of the exclusive view group', async () => {
+    const { root } = await mount('Buy milk\n')
+    const views = [...root.querySelectorAll('.views .view-btn')].map((b) => b.textContent)
+    expect(views).toEqual(['All', 'Overdue', 'Today', 'Upcoming'])
+
+    const toggle = root.querySelector<HTMLButtonElement>('.toggles .toggle-btn')
+    expect(toggle?.textContent).toBe('Show completed')
+    expect(toggle?.className).not.toContain('view-btn')
+  })
+
+  it('puts the controls in the sidebar and the tasks in the main pane', async () => {
+    const { root } = await mount('Buy milk +house\n')
+    expect(root.querySelector('.sidebar .search')).not.toBeNull()
+    expect(root.querySelector('.sidebar .chip')?.textContent).toBe('+house')
+    expect(root.querySelector('.sidebar .archive-btn')).not.toBeNull()
+    expect(root.querySelector('.main .add-form')).not.toBeNull()
+    expect(root.querySelector('.main .task-list')).not.toBeNull()
+  })
+
+  it('omits a chip group heading when nothing carries that kind of tag', async () => {
+    const { root } = await mount('Buy milk\n')
+    const headings = [...root.querySelectorAll('.filters__heading')].map((h) => h.textContent)
+    expect(headings).toEqual([])
+  })
+})

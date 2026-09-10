@@ -5,7 +5,7 @@ export default defineConfig({
   use: { baseURL: 'http://localhost:5173' },
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173/todoom/e2e/fixture.html',
+    url: 'http://localhost:5173/e2e/fixture.html',
     reuseExistingServer: true,
   },
 })

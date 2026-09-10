@@ -33,14 +33,36 @@ body {
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-.app { max-width: 780px; margin: 0 auto; padding: 24px 16px 64px; }
+.app {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 32px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-self: start;
+  position: sticky;
+  top: 24px;
+}
+
+.main { min-width: 0; }
+
+@media (max-width: 720px) {
+  .app { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .sidebar { position: static; }
+}
 
 .topbar {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .topbar h1 { font-size: 20px; margin: 0; }
@@ -49,7 +71,7 @@ body {
 .status--error { color: var(--overdue); }
 .status__retry { padding: 3px 9px; font-size: 13px; }
 
-.add-form { display: flex; gap: 8px; margin-bottom: 16px; }
+.add-form { display: flex; gap: 8px; margin-bottom: 20px; }
 
 .add-input, .search, .task__editor {
   flex: 1;
@@ -73,9 +95,51 @@ button {
 
 button:hover { border-color: var(--accent); }
 
-.views, .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+/* The exclusive due views: one vertical list, one choice. */
+.views { display: flex; flex-direction: column; gap: 2px; }
 
-.view-btn--active, .chip--active {
+.view-btn {
+  border: none;
+  background: none;
+  border-radius: 6px;
+  text-align: left;
+  padding: 7px 10px;
+}
+
+.view-btn:hover { background: var(--surface); }
+
+.view-btn--active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.view-btn--active:hover { background: var(--accent); }
+
+/* Independent of the views above, so it sits apart behind a rule. */
+.toggles { border-top: 1px solid var(--border); padding-top: 12px; }
+
+.toggle-btn { width: 100%; text-align: left; font-size: 14px; }
+
+.toggle-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.filters__heading {
+  width: 100%;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chip--active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
@@ -83,7 +147,9 @@ button:hover { border-color: var(--accent); }
 
 .chip { font-size: 13px; padding: 4px 9px; }
 
-.search { width: 100%; margin-bottom: 16px; }
+.archive-btn { margin-top: 4px; font-size: 14px; }
+
+.search { width: 100%; }
 
 .task-list { list-style: none; margin: 0; padding: 0; }
 

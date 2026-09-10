@@ -70,9 +70,12 @@ export function render(root: HTMLElement, app: TodoomApp, today: string): void {
   root.textContent = ''
 
   const container = el('div', 'app')
+  const sidebar = el('aside', 'sidebar')
+  const main = el('main', 'main')
+  container.append(sidebar, main)
   root.appendChild(container)
 
-  // Top bar
+  // Sidebar header
   const topbar = el('div', 'topbar')
   topbar.appendChild(el('h1', undefined, 'Todoom'))
   const status = el(
@@ -90,24 +93,24 @@ export function render(root: HTMLElement, app: TodoomApp, today: string): void {
     })
     topbar.appendChild(retry)
   }
-  container.appendChild(topbar)
+  sidebar.appendChild(topbar)
 
-  // Add form
-  const form = el('form', 'add-form')
-  const input = el('input', 'add-input')
-  input.placeholder = '(A) Call plumber +house @phone due:2026-09-12'
-  form.appendChild(input)
-  form.appendChild(el('button', undefined, 'Add'))
-  form.addEventListener('submit', (event) => {
-    event.preventDefault()
-    app.addTask(input.value)
-    input.value = ''
+  // Search
+  const search = el('input', 'search')
+  search.placeholder = 'Search'
+  search.value = app.state.filter.search
+  search.addEventListener('input', () => {
+    app.setFilter({ search: search.value })
+    const restore = search.selectionStart
     rerender()
+    const next = root.querySelector<HTMLInputElement>('.search')
+    next?.focus()
+    if (restore !== null) next?.setSelectionRange(restore, restore)
   })
-  container.appendChild(form)
+  sidebar.appendChild(search)
 
-  // Due views
-  const views = el('div', 'views')
+  // Due views — one exclusive choice
+  const views = el('nav', 'views')
   const viewLabels: Array<[DueView, string]> = [
     ['all', 'All'],
     ['overdue', 'Overdue'],
@@ -123,83 +126,99 @@ export function render(root: HTMLElement, app: TodoomApp, today: string): void {
     })
     views.appendChild(button)
   }
+  sidebar.appendChild(views)
+
+  // Completed is an independent toggle, not one of the exclusive views above,
+  // so it lives in its own group where it cannot look like a sibling of "All".
+  const toggles = el('div', 'toggles')
   const showDone = el(
     'button',
-    app.state.filter.showCompleted ? 'view-btn view-btn--active' : 'view-btn',
-    'Completed',
+    app.state.filter.showCompleted ? 'toggle-btn toggle-btn--active' : 'toggle-btn',
+    'Show completed',
   )
   showDone.addEventListener('click', () => {
     app.setFilter({ showCompleted: !app.state.filter.showCompleted })
     rerender()
   })
-  views.appendChild(showDone)
+  toggles.appendChild(showDone)
+  sidebar.appendChild(toggles)
 
-  const archiveButton = el('button', 'view-btn', 'Archive completed')
-  archiveButton.addEventListener('click', () => {
-    void app.archive().then(rerender)
-  })
-  views.appendChild(archiveButton)
-  container.appendChild(views)
-
-  // Filter chips
-  const filters = el('div', 'filters')
-  const addChip = (label: string, active: boolean, onClick: () => void) => {
+  // Filter chips, grouped by kind
+  const addChip = (into: HTMLElement, label: string, active: boolean, onClick: () => void) => {
     const chip = el('button', active ? 'chip chip--active' : 'chip', label)
     chip.addEventListener('click', () => {
       onClick()
       rerender()
     })
-    filters.appendChild(chip)
+    into.appendChild(chip)
   }
   // A chip whose last task is gone must keep rendering while it is selected,
   // or the filter it holds becomes impossible to clear from the UI.
   const withSelected = (collected: string[], selected: string[]): string[] =>
     [...new Set([...collected, ...selected])].sort()
 
-  for (const priority of withSelected(
-    collectPriorities(app.state.tasks),
-    app.state.filter.priorities,
-  )) {
-    addChip(`(${priority})`, app.state.filter.priorities.includes(priority), () =>
+  // An empty group would leave a heading with nothing under it, so each one is
+  // only added to the sidebar once it has at least one chip.
+  const chipGroup = (heading: string): HTMLElement => {
+    const section = el('section', 'filters')
+    section.appendChild(el('h2', 'filters__heading', heading))
+    return section
+  }
+  const commitGroup = (section: HTMLElement, values: string[]) => {
+    if (values.length > 0) sidebar.appendChild(section)
+  }
+
+  const priorities = withSelected(collectPriorities(app.state.tasks), app.state.filter.priorities)
+  const priorityGroup = chipGroup('Priority')
+  for (const priority of priorities) {
+    addChip(priorityGroup, `(${priority})`, app.state.filter.priorities.includes(priority), () =>
       app.setFilter({ priorities: toggleIn(app.state.filter.priorities, priority) }),
     )
   }
-  for (const project of withSelected(
-    collectProjects(app.state.tasks),
-    app.state.filter.projects,
-  )) {
-    addChip(`+${project}`, app.state.filter.projects.includes(project), () =>
+  commitGroup(priorityGroup, priorities)
+
+  const projects = withSelected(collectProjects(app.state.tasks), app.state.filter.projects)
+  const projectGroup = chipGroup('Projects')
+  for (const project of projects) {
+    addChip(projectGroup, `+${project}`, app.state.filter.projects.includes(project), () =>
       app.setFilter({ projects: toggleIn(app.state.filter.projects, project) }),
     )
   }
-  for (const context of withSelected(
-    collectContexts(app.state.tasks),
-    app.state.filter.contexts,
-  )) {
-    addChip(`@${context}`, app.state.filter.contexts.includes(context), () =>
+  commitGroup(projectGroup, projects)
+
+  const contexts = withSelected(collectContexts(app.state.tasks), app.state.filter.contexts)
+  const contextGroup = chipGroup('Contexts')
+  for (const context of contexts) {
+    addChip(contextGroup, `@${context}`, app.state.filter.contexts.includes(context), () =>
       app.setFilter({ contexts: toggleIn(app.state.filter.contexts, context) }),
     )
   }
-  container.appendChild(filters)
+  commitGroup(contextGroup, contexts)
 
-  // Search
-  const search = el('input', 'search')
-  search.placeholder = 'Search'
-  search.value = app.state.filter.search
-  search.addEventListener('input', () => {
-    app.setFilter({ search: search.value })
-    const restore = search.selectionStart
-    rerender()
-    const next = root.querySelector<HTMLInputElement>('.search')
-    next?.focus()
-    if (restore !== null) next?.setSelectionRange(restore, restore)
+  const archiveButton = el('button', 'archive-btn', 'Archive completed')
+  archiveButton.addEventListener('click', () => {
+    void app.archive().then(rerender)
   })
-  container.appendChild(search)
+  sidebar.appendChild(archiveButton)
+
+  // Add form
+  const form = el('form', 'add-form')
+  const input = el('input', 'add-input')
+  input.placeholder = '(A) Call plumber +house @phone due:2026-09-12'
+  form.appendChild(input)
+  form.appendChild(el('button', undefined, 'Add'))
+  form.addEventListener('submit', (event) => {
+    event.preventDefault()
+    app.addTask(input.value)
+    input.value = ''
+    rerender()
+  })
+  main.appendChild(form)
 
   // Task list
   const visible = app.visibleTasks()
   if (visible.length === 0) {
-    container.appendChild(el('p', 'empty', 'Nothing here.'))
+    main.appendChild(el('p', 'empty', 'Nothing here.'))
     return
   }
 
@@ -251,5 +270,5 @@ export function render(root: HTMLElement, app: TodoomApp, today: string): void {
 
     list.appendChild(row)
   }
-  container.appendChild(list)
+  main.appendChild(list)
 }

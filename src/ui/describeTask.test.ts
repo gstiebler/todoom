@@ -8,19 +8,31 @@ describe('describeTask', () => {
   it('marks an overdue task', () => {
     const d = describeTask(parseLine('Buy milk due:2026-09-01'), TODAY)
     expect(d.classes).toContain('task--overdue')
-    expect(d.dueLabel).toBe('Overdue 2026-09-01')
+    expect(d.dueLabel).toBe('1 Sep')
   })
 
   it('marks a task due today', () => {
     const d = describeTask(parseLine('Buy milk due:2026-09-10'), TODAY)
     expect(d.classes).toContain('task--today')
-    expect(d.dueLabel).toBe('Due today')
+    expect(d.dueLabel).toBe('Today')
   })
 
-  it('labels a future due date plainly', () => {
+  it('labels tomorrow by name', () => {
+    expect(describeTask(parseLine('Buy milk due:2026-09-11'), TODAY).dueLabel).toBe('Tomorrow')
+  })
+
+  it('names the weekday inside the coming week', () => {
+    expect(describeTask(parseLine('Buy milk due:2026-09-15'), TODAY).dueLabel).toBe('Tuesday')
+  })
+
+  it('labels a further due date with a short date', () => {
     const d = describeTask(parseLine('Buy milk due:2026-09-20'), TODAY)
     expect(d.classes).not.toContain('task--overdue')
-    expect(d.dueLabel).toBe('Due 2026-09-20')
+    expect(d.dueLabel).toBe('20 Sep')
+  })
+
+  it('keeps the year on a date from another year', () => {
+    expect(describeTask(parseLine('Buy milk due:2025-08-26'), TODAY).dueLabel).toBe('26 Aug 2025')
   })
 
   it('has no due label without a due date', () => {

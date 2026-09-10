@@ -4,33 +4,22 @@ import type { Task } from '../core/types'
 import type { TodoomApp } from '../app/state'
 import { formatTask } from '../core/format'
 import { describeTask } from './describeTask'
+import { CalendarIcon, RepeatIcon, TagIcon } from './icons'
 
-function Description({ task, onClick }: { task: Task; onClick: () => void }) {
-  const words = task.description.split(' ')
-  const parts = words.flatMap((word, i) => {
-    const key = `${i}-${word}`
-    if (word.startsWith('+') && word.length > 1) {
-      return [
-        <span key={key} className="tag tag--project">
-          {word}
-        </span>,
-        ' ',
-      ]
-    }
-    if (word.startsWith('@') && word.length > 1) {
-      return [
-        <span key={key} className="tag tag--context">
-          {word}
-        </span>,
-        ' ',
-      ]
-    }
-    if (/^(due|rec|pri):/.test(word)) return []
-    return [word, ' ']
-  })
+// The title line is the description with the machinery taken out: the tags and
+// the key:value pairs all reappear below it, in the meta row.
+function title(task: Task): string {
+  const words = task.description
+    .split(' ')
+    .filter((word) => !/^[+@]\S/.test(word) && !/^(due|rec|pri):/.test(word))
+  return words.join(' ').trim() || task.description
+}
+
+function Tag({ label, kind }: { label: string; kind: 'project' | 'context' }) {
   return (
-    <span className="task__text" onClick={onClick}>
-      {parts.length === 0 ? task.description : parts}
+    <span className={`tag tag--${kind}`}>
+      <TagIcon />
+      {label}
     </span>
   )
 }
@@ -50,6 +39,7 @@ const TaskRow = observer(function TaskRow({
   const discarded = useRef(false)
   const index = app.indexOf(task)
   const { classes, dueLabel } = describeTask(task, today)
+  const rec = task.pairs['rec']
 
   const commit = () => {
     if (discarded.current) {
@@ -63,34 +53,58 @@ const TaskRow = observer(function TaskRow({
   return (
     <li className={classes.join(' ')}>
       <input
-        className="task__check"
+        className={`task__check task__check--${task.priority?.toLowerCase() ?? 'none'}`}
         type="checkbox"
         checked={task.completed}
         onChange={() => app.toggleComplete(index)}
       />
-      {task.priority && <span className="task__pri">({task.priority})</span>}
 
-      {draft === null ? (
-        <Description task={task} onClick={() => setDraft(formatTask(task))} />
-      ) : (
-        <input
-          className="task__editor"
-          autoFocus
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') commit()
-            if (event.key === 'Escape') {
-              discarded.current = true
-              setDraft(null)
-            }
-          }}
-        />
-      )}
+      <div className="task__body">
+        {draft === null ? (
+          <span className="task__text" onClick={() => setDraft(formatTask(task))}>
+            {title(task)}
+          </span>
+        ) : (
+          <input
+            className="task__editor"
+            autoFocus
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') commit()
+              if (event.key === 'Escape') {
+                discarded.current = true
+                setDraft(null)
+              }
+            }}
+          />
+        )}
 
-      {task.pairs['rec'] && <span className="task__badge">repeats {task.pairs['rec']}</span>}
-      {dueLabel && <span className="task__due">{dueLabel}</span>}
+        {(dueLabel || rec || task.projects.length > 0 || task.contexts.length > 0) && (
+          <div className="task__meta">
+            {dueLabel && (
+              <span className="task__due">
+                <CalendarIcon />
+                {dueLabel}
+                {rec && <RepeatIcon />}
+              </span>
+            )}
+            {!dueLabel && rec && (
+              <span className="task__due">
+                <RepeatIcon />
+                {rec}
+              </span>
+            )}
+            {task.projects.map((project) => (
+              <Tag key={project} label={`+${project}`} kind="project" />
+            ))}
+            {task.contexts.map((context) => (
+              <Tag key={context} label={`@${context}`} kind="context" />
+            ))}
+          </div>
+        )}
+      </div>
 
       <button className="task__delete" title="Delete" onClick={() => app.deleteTask(index)}>
         ×
@@ -99,7 +113,13 @@ const TaskRow = observer(function TaskRow({
   )
 })
 
-export const TaskList = observer(function TaskList({ app, today }: { app: TodoomApp; today: string }) {
+export const TaskList = observer(function TaskList({
+  app,
+  today,
+}: {
+  app: TodoomApp
+  today: string
+}) {
   const visible = app.visibleTasks()
   if (visible.length === 0) return <p className="empty">Nothing here.</p>
 

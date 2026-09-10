@@ -21,6 +21,9 @@ export function quickDates(today: string): QuickDate[] {
 
 export const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
+// Monday-first, matching weekday() in core/dates.
+export const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
 export interface MonthGrid {
   year: number
   month: number
@@ -29,7 +32,7 @@ export interface MonthGrid {
   cells: Array<string | null>
 }
 
-const MONTH_NAMES = [
+export const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]

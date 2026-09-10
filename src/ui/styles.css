@@ -7,6 +7,8 @@
   --overdue: #b91c1c;
   --today: #b45309;
   --surface: #f9fafb;
+  --soon: #7c3aed;
+  --tag-context: #047857;
   color-scheme: light;
 }
 
@@ -20,6 +22,8 @@
     --overdue: #f87171;
     --today: #fbbf24;
     --surface: #191c1f;
+    --soon: #a78bfa;
+    --tag-context: #34d399;
     color-scheme: dark;
   }
 }
@@ -347,20 +351,71 @@ button:hover { border-color: var(--accent); }
 
 .task {
   display: flex;
-  align-items: baseline;
-  gap: 9px;
-  padding: 9px 4px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 4px;
   border-bottom: 1px solid var(--border);
 }
 
-.task--done .task__text { color: var(--muted); text-decoration: line-through; }
-.task--overdue .task__due { color: var(--overdue); font-weight: 600; }
-.task--today .task__due { color: var(--today); font-weight: 600; }
+/* The checkbox is the priority: a hollow circle tinted by (A)-(D), filled once
+   the task is done. */
+.task__check {
+  appearance: none;
+  margin: 2px 0 0;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 1.5px solid var(--check);
+  border-radius: 50%;
+  cursor: pointer;
+}
 
-.task__check { margin: 0; }
-.task__pri { font-weight: 700; color: var(--accent); }
-.task__text { flex: 1; cursor: text; word-break: break-word; }
-.task__due, .task__badge { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.task__check:hover { background: color-mix(in srgb, var(--check) 20%, transparent); }
+.task__check--a { --check: var(--overdue); }
+.task__check--b { --check: var(--today); }
+.task__check--c { --check: var(--accent); }
+.task__check--d { --check: var(--soon); }
+.task__check--none { --check: var(--muted); }
+
+.task__check:checked {
+  background: color-mix(in srgb, var(--check) 35%, transparent);
+  border-color: transparent;
+}
+
+.task__check:checked::after {
+  content: '✓';
+  display: block;
+  margin-top: -3px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--check);
+}
+
+.task__body { flex: 1; min-width: 0; }
+.task__text { cursor: text; word-break: break-word; }
+
+.task__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.task__due, .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.task--done .task__text { color: var(--muted); text-decoration: line-through; }
+.task--done .task__meta { color: var(--muted); }
+.task--overdue .task__due { color: var(--overdue); }
+.task--today .task__due { color: var(--today); }
+.task--soon .task__due { color: var(--soon); }
 
 .task__delete {
   border: none;
@@ -372,9 +427,8 @@ button:hover { border-color: var(--accent); }
 
 .task__delete:hover { color: var(--overdue); }
 
-.tag { font-size: 13px; }
 .tag--project { color: var(--accent); }
-.tag--context { color: var(--today); }
+.tag--context { color: var(--tag-context); }
 
 .empty { color: var(--muted); padding: 24px 0; text-align: center; }
 

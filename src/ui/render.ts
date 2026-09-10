@@ -151,17 +151,31 @@ export function render(root: HTMLElement, app: TodoomApp, today: string): void {
     })
     filters.appendChild(chip)
   }
-  for (const priority of collectPriorities(app.state.tasks)) {
+  // A chip whose last task is gone must keep rendering while it is selected,
+  // or the filter it holds becomes impossible to clear from the UI.
+  const withSelected = (collected: string[], selected: string[]): string[] =>
+    [...new Set([...collected, ...selected])].sort()
+
+  for (const priority of withSelected(
+    collectPriorities(app.state.tasks),
+    app.state.filter.priorities,
+  )) {
     addChip(`(${priority})`, app.state.filter.priorities.includes(priority), () =>
       app.setFilter({ priorities: toggleIn(app.state.filter.priorities, priority) }),
     )
   }
-  for (const project of collectProjects(app.state.tasks)) {
+  for (const project of withSelected(
+    collectProjects(app.state.tasks),
+    app.state.filter.projects,
+  )) {
     addChip(`+${project}`, app.state.filter.projects.includes(project), () =>
       app.setFilter({ projects: toggleIn(app.state.filter.projects, project) }),
     )
   }
-  for (const context of collectContexts(app.state.tasks)) {
+  for (const context of withSelected(
+    collectContexts(app.state.tasks),
+    app.state.filter.contexts,
+  )) {
     addChip(`@${context}`, app.state.filter.contexts.includes(context), () =>
       app.setFilter({ contexts: toggleIn(app.state.filter.contexts, context) }),
     )

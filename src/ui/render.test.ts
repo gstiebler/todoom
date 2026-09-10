@@ -17,6 +17,10 @@ async function mount(seed: string) {
   return { app, root, store }
 }
 
+function labels(root: HTMLElement): string[] {
+  return [...root.querySelectorAll('.chip')].map((c) => c.textContent ?? '')
+}
+
 beforeEach(() => {
   document.body.innerHTML = ''
 })
@@ -134,5 +138,35 @@ describe('render', () => {
     app.addTask('b')
     render(root, app, TODAY)
     expect(root.querySelector('.status')?.textContent).toBe('Unsaved changes')
+  })
+})
+
+describe('stranded filter chips', () => {
+  it('keeps a selected project chip after its last task is archived', async () => {
+    const { root, app } = await mount('Buy milk +groceries\nCall plumber +house\n')
+    app.setFilter({ projects: ['groceries'] })
+    render(root, app, TODAY)
+    expect(labels(root)).toContain('+groceries')
+
+    const milk = app.state.tasks.find((t) => t.projects.includes('groceries'))
+    if (milk) app.toggleComplete(app.state.tasks.indexOf(milk))
+    await app.archive()
+    render(root, app, TODAY)
+
+    expect(labels(root)).toContain('+groceries')
+  })
+
+  it('keeps a selected context chip that no task carries', async () => {
+    const { root, app } = await mount('Call plumber +house\n')
+    app.setFilter({ contexts: ['phone'] })
+    render(root, app, TODAY)
+    expect(labels(root)).toContain('@phone')
+  })
+
+  it('keeps a selected priority chip that no task carries', async () => {
+    const { root, app } = await mount('Call plumber +house\n')
+    app.setFilter({ priorities: ['A'] })
+    render(root, app, TODAY)
+    expect(labels(root)).toContain('(A)')
   })
 })

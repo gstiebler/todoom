@@ -13,6 +13,11 @@ interface GoogleTokenResponse {
   error?: string
 }
 
+interface GoogleTokenError {
+  type: string
+  message?: string
+}
+
 interface GoogleTokenClient {
   callback: (response: GoogleTokenResponse) => void
   requestAccessToken: (options: { prompt: '' | 'consent' }) => void
@@ -23,6 +28,7 @@ interface GoogleOAuth2 {
     client_id: string
     scope: string
     callback: (response: GoogleTokenResponse) => void
+    error_callback?: (error: GoogleTokenError) => void
   }): GoogleTokenClient
   revoke(token: string, callback: () => void): void
 }
@@ -78,6 +84,7 @@ export class GoogleDriveStore implements TodoStore {
   private token: string | null = null
   private tokenClient: GoogleTokenClient | null = null
   private config = loadConfig()
+  private onTokenError: ((error: Error) => void) | null = null
 
   isSignedIn(): boolean {
     return this.token !== null
@@ -90,6 +97,7 @@ export class GoogleDriveStore implements TodoStore {
       client_id: this.config.clientId,
       scope: SCOPE,
       callback: () => {},
+      error_callback: (error) => this.onTokenError?.(new Error(error.type)),
     })
   }
 
@@ -98,9 +106,32 @@ export class GoogleDriveStore implements TodoStore {
     await this.requestToken('consent')
   }
 
+  // Ask Google for a token without showing any UI. This succeeds only when the
+  // browser still has a Google session and the scope is already granted, which
+  // is what lets a returning visitor skip the Connect screen. It resolves false
+  // rather than throwing: a revoked grant, an expired session or blocked
+  // third-party cookies are all ordinary reasons to fall back to the button.
+  async signInSilently(): Promise<boolean> {
+    await this.ensureTokenClient()
+    try {
+      await Promise.race([
+        this.requestToken(''),
+        // Google occasionally answers neither callback; without this the page
+        // would sit on the placeholder forever.
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('silent sign-in timed out')), 10000),
+        ),
+      ])
+      return true
+    } catch {
+      return false
+    }
+  }
+
   private requestToken(prompt: '' | 'consent'): Promise<void> {
     return new Promise((resolve, reject) => {
       const tokenClient = this.tokenClient!
+      this.onTokenError = reject
       tokenClient.callback = (response) => {
         if (response.error) return reject(new Error(response.error))
         this.token = response.access_token

@@ -121,11 +121,14 @@ export const Gantt = observer(function Gantt({ app, today }: { app: TodoomApp; t
                 const y2 = y(arrow.to) + ROW / 2
                 // A dependant that starts before its blocker ends routes around the bar
                 // instead of cutting back through it.
+                const out = `M ${x1} ${y1} H ${x1 + DAY / 2}`
                 const d =
                   x2 < x1
-                    ? `M ${x1} ${y1} H ${x1 + DAY / 2} V ${y2 - ROW / 2} H ${x2 - DAY / 2} V ${y2} H ${x2}`
-                    : `M ${x1} ${y1} H ${x1 + DAY / 2} V ${y2} H ${x2}`
-                return <path key={i} className="gantt__arrow" d={d} markerEnd="url(#gantt-arrow)" />
+                    ? `${out} V ${y2 - ROW / 2} H ${x2 - DAY / 2} V ${y2} H ${x2}`
+                    : `${out} V ${y2} H ${x2}`
+                return (
+                  <path key={i} className="gantt__arrow" d={d} markerEnd="url(#gantt-arrow)" />
+                )
               })}
             </svg>
           </div>

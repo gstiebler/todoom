@@ -25,7 +25,10 @@ function isErrorState(state: AppState): boolean {
 
 /** The model is asked for one line; this forgives fences or quotes around it. */
 function firstLine(answer: string): string {
-  const line = answer.trim().split('\n')[0] ?? ''
+  const line = answer
+    .split('\n')
+    .map((l) => l.trim())
+    .find((l) => l.length > 0 && !l.startsWith('```')) ?? ''
   return line.replace(/^[`"']+|[`"']+$/g, '').trim()
 }
 
@@ -77,10 +80,11 @@ export class TodoomApp {
     // The Drive client, the clock and the model are collaborators, not state;
     // leave them as they are. Everything else is observable, so mutating
     // `state` in place is what tells the UI something happened.
-    makeAutoObservable<TodoomApp, 'store' | 'today' | 'model'>(this, {
+    makeAutoObservable<TodoomApp, 'store' | 'today' | 'model' | 'session'>(this, {
       store: false,
       today: false,
       model: false,
+      session: false,
     })
     void this.model.availability().then((availability) => {
       runInAction(() => {
@@ -304,9 +308,7 @@ export class TodoomApp {
           this.state.modelProgress = fraction
         })
       })
-      runInAction(() => {
-        this.session = session
-      })
+      this.session = session
       return session
     } finally {
       runInAction(() => {

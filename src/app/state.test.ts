@@ -422,6 +422,12 @@ describe('translate', () => {
     expect(app.state.filter.search).toBe('+home')
   })
 
+  it('skips a fence line to find the first real line', async () => {
+    const app = await setupModel(new FakeModel('available', ['```\n+home\n```']))
+    await app.translate('home')
+    expect(app.state.filter.search).toBe('+home')
+  })
+
   it('retries once with the parse error', async () => {
     const model = new FakeModel('available', ['+home |', '+home'])
     const app = await setupModel(model)
@@ -441,11 +447,12 @@ describe('translate', () => {
     const model = new FakeModel('available', ['+home', 'done'], [0.5])
     const app = await setupModel(model)
     const seen: Array<number | null> = []
-    reaction(() => app.state.modelProgress, (p) => seen.push(p))
+    const stop = reaction(() => app.state.modelProgress, (p) => seen.push(p))
     await app.translate('home')
     await app.translate('finished')
     expect(seen).toEqual([0, 0.5, null])
     expect(model.sessions).toBe(1)
+    stop()
   })
 
   it('clears the progress when the download fails', async () => {

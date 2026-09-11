@@ -115,8 +115,8 @@ missing. `create` calls `LanguageModel.create({ initialPrompts: [{ role:
      second `parseQuery` throws to the caller on failure.
   5. `this.setFilter({ search: query })`.
 
-  `firstLine` trims, takes the text up to the first newline, and strips
-  surrounding backticks or quotes if the model added them.
+  `firstLine` takes the first non-empty line that is not a code fence, and
+  strips surrounding backticks or quotes if the model added them.
 
   The session is created once with the vocabulary of that moment; later label
   changes are not reflected until reload. This is acceptable for a first
@@ -176,7 +176,7 @@ has no caller to bubble to. No new error types.
   fake's answer in the search box; an error keeps the form open with the
   message.
 - `e2e/todoom.spec.ts`: the fixture constructs `TodoomApp` with a fake
-  adapter (always `available`, answers `+home & due:today`); one scenario
+  adapter (always `available`, answers `+house & (A)`); one scenario
   describes a filter and asserts the search box and the task list.
 
 No test calls the real model. The real adapter is exercised manually in

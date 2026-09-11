@@ -18,7 +18,8 @@ describe('describeTask', () => {
   })
 
   it('labels tomorrow by name', () => {
-    expect(describeTask(parseLine('Buy milk due:2026-09-11'), TODAY, 'en').dueLabel).toBe('Tomorrow')
+    const { dueLabel } = describeTask(parseLine('Buy milk due:2026-09-11'), TODAY, 'en')
+    expect(dueLabel).toBe('Tomorrow')
   })
 
   it('names the weekday inside the coming week', () => {
@@ -32,7 +33,8 @@ describe('describeTask', () => {
   })
 
   it('keeps the year on a date from another year', () => {
-    expect(describeTask(parseLine('Buy milk due:2025-08-26'), TODAY, 'en').dueLabel).toBe('Aug 26, 2025')
+    const { dueLabel } = describeTask(parseLine('Buy milk due:2025-08-26'), TODAY, 'en')
+    expect(dueLabel).toBe('Aug 26, 2025')
   })
 
   it('has no due label without a due date', () => {
@@ -67,7 +69,8 @@ describe('describeTask', () => {
 
   it('speaks Portuguese', () => {
     expect(describeTask(parseLine('Buy milk due:2026-09-10'), TODAY, 'pt-BR').dueLabel).toBe('Hoje')
-    expect(describeTask(parseLine('Buy milk due:2026-09-11'), TODAY, 'pt-BR').dueLabel).toBe('Amanhã')
+    const { dueLabel } = describeTask(parseLine('Buy milk due:2026-09-11'), TODAY, 'pt-BR')
+    expect(dueLabel).toBe('Amanhã')
     expect(describeTask(parseLine('Buy milk due:2026-09-15'), TODAY, 'pt-BR').dueLabel).toBe(
       'terça-feira',
     )

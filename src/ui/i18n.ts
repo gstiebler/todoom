@@ -11,7 +11,7 @@ function isLocale(value: string | null): value is Locale {
 export function loadLocale(): Locale {
   const stored = localStorage.getItem(KEY)
   if (isLocale(stored)) return stored
-  return navigator.language.startsWith('pt') ? 'pt-BR' : 'en'
+  return navigator.language.toLowerCase().startsWith('pt') ? 'pt-BR' : 'en'
 }
 
 export function saveLocale(locale: Locale): void {
@@ -46,6 +46,7 @@ const en = {
   'attachments.empty': 'No files yet.',
   'attachments.addFile': 'Add file',
   'attachments.workingAria': 'Working',
+  'attachments.missing': '{id} (missing)',
   'columns.empty': 'Tick a saved filter in the sidebar to show it here.',
   'date.fieldLabel': 'Date',
   'date.previousMonth': 'Previous month',
@@ -108,6 +109,7 @@ const en = {
   'signin.connect': 'Connect to Drive',
   'signin.gone': 'That file is gone from Drive. Reload to create a new todo.txt.',
   'signin.reload': 'Reload',
+  'signin.failed': 'sign-in failed: {error}',
 } as const
 
 export type Key = keyof typeof en
@@ -123,7 +125,7 @@ const ptBR: Record<Key, string> = {
   'common.close': 'Fechar',
   'common.search': 'Buscar',
   'common.searchPlaceholder': 'Buscar ou filtrar…',
-  'common.dismiss': 'Dispensar',
+  'common.dismiss': 'Descartar',
   'common.remove': 'Remover',
   'common.save': 'Salvar',
   'common.delete': 'Excluir',
@@ -139,7 +141,8 @@ const ptBR: Record<Key, string> = {
   'attachments.empty': 'Nenhum arquivo ainda.',
   'attachments.addFile': 'Adicionar arquivo',
   'attachments.workingAria': 'Processando',
-  'columns.empty': 'Marque um filtro salvo na barra lateral pra mostrar aqui.',
+  'attachments.missing': '{id} (ausente)',
+  'columns.empty': 'Marque um filtro salvo na barra lateral para mostrar aqui.',
   'date.fieldLabel': 'Data',
   'date.previousMonth': 'Mês anterior',
   'date.nextMonth': 'Próximo mês',
@@ -153,8 +156,8 @@ const ptBR: Record<Key, string> = {
   'quick.weekend': 'Este fim de semana',
   'quick.nextWeek': 'Semana que vem',
   'deps.searchPlaceholder': 'Buscar uma tarefa',
-  'deps.empty': 'Nenhuma tarefa aberta pra esperar.',
-  'gantt.empty': 'Dê uma data ou prazo a uma tarefa pra ela aparecer aqui.',
+  'deps.empty': 'Nenhuma tarefa aberta para esperar.',
+  'gantt.empty': 'Dê uma data ou prazo a uma tarefa para ela aparecer aqui.',
   'labels.emptyHint': 'Nenhuma etiqueta ainda. Digite +projeto ou @contexto.',
   'labels.typePlaceholder': 'Digite uma etiqueta',
   'preview.openInDrive': 'Abrir no Drive',
@@ -179,7 +182,7 @@ const ptBR: Record<Key, string> = {
   'view.all': 'Todas',
   'view.overdue': 'Atrasadas',
   'view.today': 'Hoje',
-  'view.upcoming': 'Em breve',
+  'view.upcoming': 'Próximas',
   'stats.streakHeading': 'Sequência',
   'stats.noStreak': 'Nenhuma sequência ativa',
   'stats.streakDays.one': '{count} dia seguido',
@@ -199,8 +202,9 @@ const ptBR: Record<Key, string> = {
   'taskModal.clearDependencyAria': 'Limpar dependência',
   'signin.intro': 'O Todoom guarda suas tarefas em um arquivo todo.txt no seu Google Drive.',
   'signin.connect': 'Conectar ao Drive',
-  'signin.gone': 'Esse arquivo sumiu do Drive. Recarregue pra criar um novo todo.txt.',
+  'signin.gone': 'Esse arquivo sumiu do Drive. Recarregue para criar um novo todo.txt.',
   'signin.reload': 'Recarregar',
+  'signin.failed': 'falha ao entrar: {error}',
 }
 
 export const STRINGS: Record<Locale, Record<Key, string>> = { en, 'pt-BR': ptBR }

@@ -37,7 +37,7 @@ function Bars({
         <div
           className="bars__col"
           key={bucket.date}
-          title={`${shortDate(locale, bucket.date, today)}: ${bucket.count}`}
+          title={`${shortDate(locale, bucket.date, today)}: ${bucket.count.toLocaleString(locale)}`}
         >
           <div className="bars__bar" style={{ height: `${(bucket.count / max) * 100}%` }} />
           <span className="bars__label">

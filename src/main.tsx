@@ -6,7 +6,7 @@ import { GoogleDriveStore } from './drive/googleStore'
 import type { TodoStore } from './drive/store'
 import { App } from './ui/App'
 import { SignIn } from './ui/SignIn'
-import { loadLocale, t } from './ui/i18n'
+import { loadLocale, t, type Locale } from './ui/i18n'
 import { filterFromQuery } from './app/urlState'
 import { syncFilterHistory } from './app/urlHistory'
 import { clearWorkspace, createDebouncedSaver, openWorkspace, type Workspace } from './app/session'
@@ -27,7 +27,7 @@ function showSignIn(message: string, actions: Array<[string, () => void]>): void
   reactRoot.render(<SignIn message={message} actions={actions} />)
 }
 
-function start(store: TodoStore, workspace: Workspace): void {
+function start(store: TodoStore, workspace: Workspace, locale: Locale): void {
   const app = new TodoomApp(store, todayIso)
   const saver = createDebouncedSaver(app, 2000)
 
@@ -78,18 +78,19 @@ function start(store: TodoStore, workspace: Workspace): void {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('404')) {
         clearWorkspace()
-        showSignIn(t(loadLocale(), 'signin.gone'), [
-          [t(loadLocale(), 'signin.reload'), () => window.location.reload()],
+        showSignIn(t(locale, 'signin.gone'), [
+          [t(locale, 'signin.reload'), () => window.location.reload()],
         ])
         return
       }
-      showSignIn(message, [[t(loadLocale(), 'common.retry'), () => window.location.reload()]])
+      showSignIn(message, [[t(locale, 'common.retry'), () => window.location.reload()]])
     })
 }
 
 function main(): void {
   const store = new GoogleDriveStore()
   const locale = loadLocale()
+  document.documentElement.lang = locale
 
   const failed = (error: unknown) => {
     showSignIn(error instanceof Error ? error.message : String(error), [
@@ -119,10 +120,10 @@ function main(): void {
   store
     .signIn()
     .then(() => openWorkspace(store))
-    .then((workspace) => start(store, workspace))
+    .then((workspace) => start(store, workspace, locale))
     .catch((cause: unknown) => {
       if (cause instanceof SignedOutError) {
-        offerConnect(error ? `sign-in failed: ${error}` : undefined)
+        offerConnect(error ? t(locale, 'signin.failed', { error }) : undefined)
         return
       }
       failed(cause)

@@ -63,7 +63,7 @@ export const AttachmentList = observer(function AttachmentList({
                   {entry.name}
                 </a>
               ) : (
-                <span className="attachment__missing">{id} (missing)</span>
+                <span className="attachment__missing">{t('attachments.missing', { id })}</span>
               )}
               {state && <PendingMark app={app} taskId={taskId} entry={state} />}
               <button

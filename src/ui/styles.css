@@ -733,6 +733,37 @@ button:hover { border-color: var(--accent); }
 .streak__day--3 { background: color-mix(in srgb, var(--accent) 80%, var(--border)); }
 .streak__day--4 { background: var(--accent); }
 
+.gantt { display: flex; align-items: flex-start; }
+.gantt__gutter { flex: 0 0 240px; border-right: 1px solid var(--border); }
+.gantt__header { height: 24px; }
+.gantt__row {
+  display: block;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.gantt__row:hover { background: var(--surface); }
+.gantt__chart { overflow-x: auto; flex: 1 1 auto; min-width: 0; }
+.gantt__chart svg { display: block; }
+.gantt__weekend { fill: var(--surface); }
+.gantt__month { fill: var(--muted); font-size: 11px; }
+.gantt__today { stroke: var(--today); stroke-width: 1; }
+.gantt__bar { fill: var(--accent); cursor: pointer; }
+.gantt__bar--overdue { fill: var(--overdue); }
+.gantt__deadline { stroke: var(--muted); stroke-width: 2; }
+.gantt__deadline--overdue { stroke: var(--overdue); }
+.gantt__arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.gantt__empty { color: var(--muted); }
+
 /* The terminal skin: same layout, repainted. It comes last so its square corners
    win over the rounded ones above without needing !important. */
 [data-theme='terminal'] {

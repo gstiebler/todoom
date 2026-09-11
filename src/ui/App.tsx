@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar'
 import { TaskList } from './TaskList'
 import { Stats } from './Stats'
 import { Columns } from './Columns'
+import { Gantt } from './Gantt'
 
 export const App = observer(function App({
   app,
@@ -21,6 +22,8 @@ export const App = observer(function App({
           <Stats app={app} today={today()} />
         ) : app.state.page === 'columns' ? (
           <Columns app={app} today={today()} />
+        ) : app.state.page === 'gantt' ? (
+          <Gantt app={app} today={today()} />
         ) : (
           <>
             <AddTask app={app} today={today()} />

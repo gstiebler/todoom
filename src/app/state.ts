@@ -38,7 +38,7 @@ export interface AppState {
   archived: Task[] | null
   /** What filters.txt holds; null until the workspace has loaded. */
   filters: SavedFilter[] | null
-  page: 'tasks' | 'stats' | 'columns'
+  page: 'tasks' | 'stats' | 'columns' | 'gantt'
   filter: Filter
   saveState: SaveState
   error: string | null

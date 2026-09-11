@@ -216,7 +216,7 @@ describe('sidebar layout', () => {
   it('keeps the completed toggle out of the exclusive view group', async () => {
     const { root } = await mount('Buy milk\n')
     const views = [...root.querySelectorAll('.views .view-btn')].map((b) => b.textContent)
-    expect(views).toEqual(['All', 'Overdue', 'Today', 'Upcoming', 'Stats', 'Columns'])
+    expect(views).toEqual(['All', 'Overdue', 'Today', 'Upcoming', 'Stats', 'Columns', 'Gantt'])
 
     const toggle = root.querySelector<HTMLButtonElement>('.toggles .toggle-btn')
     expect(toggle?.textContent).toBe('Show completed')
@@ -610,5 +610,65 @@ describe('columns', () => {
     await app.setColumn('Bad', true)
     act(() => app.showPage('columns'))
     expect(root.querySelector('.column .query-error')?.textContent).toBe('Missing a term at the end')
+  })
+})
+
+describe('gantt', () => {
+  function openGantt(root: HTMLElement) {
+    fireEvent.click([...root.querySelectorAll('.view-btn')].find((b) => b.textContent === 'Gantt')!)
+  }
+
+  it('shows a hint when no task has a date', async () => {
+    const { root } = await mount('Buy milk\n')
+    openGantt(root)
+    expect(root.querySelector('.gantt__empty')?.textContent).toBe(
+      'Give a task a due date or a deadline to see it here.',
+    )
+  })
+
+  it('draws one bar per dated task at the day column', async () => {
+    const { root } = await mount('Buy milk\nCall due:2026-09-14\n')
+    openGantt(root)
+    const bars = root.querySelectorAll('.gantt__bar')
+    expect(bars).toHaveLength(1)
+    // Range starts 3 days before today (2026-09-07); today is column 3.
+    expect(bars[0]?.getAttribute('x')).toBe(String(3 * 28))
+    expect(bars[0]?.getAttribute('width')).toBe(String(5 * 28))
+    expect(root.querySelectorAll('.gantt__row')).toHaveLength(1)
+  })
+
+  it('marks an overdue bar and draws a deadline tick', async () => {
+    const { root } = await mount('Call due:2026-09-01 deadline:2026-09-20\n')
+    openGantt(root)
+    expect(root.querySelector('.gantt__bar--overdue')).not.toBeNull()
+    expect(root.querySelectorAll('.gantt__deadline')).toHaveLength(1)
+  })
+
+  it('draws an arrow between a blocker and its dependant', async () => {
+    const { root } = await mount('A id:aaaaaa due:2026-09-12\nB dep:aaaaaa due:2026-09-15\n')
+    openGantt(root)
+    expect(root.querySelectorAll('.gantt__arrow')).toHaveLength(1)
+  })
+
+  it('opens the task modal from a bar', async () => {
+    const { root } = await mount('Call due:2026-09-14\n')
+    openGantt(root)
+    fireEvent.click(root.querySelector('.gantt__bar')!)
+    expect(root.querySelector('.task-modal__title')).toHaveProperty('value', 'Call')
+  })
+
+  it('narrows the rows with the sidebar search', async () => {
+    const { root } = await mount('Call +house due:2026-09-14\nPay +bills due:2026-09-15\n')
+    fireEvent.change(root.querySelector('.search')!, { target: { value: '+house' } })
+    openGantt(root)
+    expect(root.querySelectorAll('.gantt__row')).toHaveLength(1)
+  })
+
+  it('hides completed tasks unless show completed is on', async () => {
+    const { root } = await mount('x 2026-09-01 Call due:2026-09-14\n')
+    openGantt(root)
+    expect(root.querySelector('.gantt__empty')).not.toBeNull()
+    fireEvent.click(root.querySelector('.toggles .toggle-btn')!)
+    expect(root.querySelectorAll('.gantt__row')).toHaveLength(1)
   })
 })

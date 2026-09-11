@@ -129,6 +129,12 @@ export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
         >
           Columns
         </button>
+        <button
+          className={page === 'gantt' ? 'view-btn view-btn--active' : 'view-btn'}
+          onClick={() => app.showPage('gantt')}
+        >
+          Gantt
+        </button>
       </nav>
 
       {filters && filters.length > 0 && (

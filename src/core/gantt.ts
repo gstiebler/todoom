@@ -59,6 +59,7 @@ export function ganttRange(rows: GanttRow[], today: string): GanttRange {
     if (row.start < earliest) earliest = row.start
     if (row.end > latest) latest = row.end
     if (row.deadline && row.deadline > latest) latest = row.deadline
+    if (row.deadline && row.deadline < earliest) earliest = row.deadline
   }
   const from = addInterval(earliest, -PAD_DAYS, 'd')
   let to = addInterval(latest, PAD_DAYS, 'd')

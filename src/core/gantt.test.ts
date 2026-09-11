@@ -83,6 +83,11 @@ describe('ganttRange', () => {
   it('centres on today when there are no rows', () => {
     expect(ganttRange([], TODAY)).toEqual({ from: '2026-09-07', to: '2026-09-27', days: 21 })
   })
+
+  it('contains a deadline that falls before the bar', () => {
+    const range = ganttRange(rows(['2026-09-12 Call due:2026-09-14 deadline:2026-09-01']), TODAY)
+    expect(range.from).toBe('2026-08-29')
+  })
 })
 
 describe('dayIndex', () => {

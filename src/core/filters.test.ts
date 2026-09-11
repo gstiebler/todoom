@@ -16,6 +16,10 @@ describe('parseFilters', () => {
   test('ignores blank, nameless and malformed lines', () => {
     expect(parseFilters('\n: +home\nno separator\n  \n')).toEqual([])
   })
+
+  test('ignores an indented nameless line', () => {
+    expect(parseFilters('  : +home\n')).toEqual([])
+  })
 })
 
 describe('formatFilters', () => {

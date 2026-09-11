@@ -13,9 +13,11 @@ export function SaveFilter({ app, query }: { app: TodoomApp; query: string }) {
     )
   }
 
+  const trimmed = name.trim()
+  const invalid = trimmed.length === 0 || name.includes(': ')
+
   const save = () => {
-    const trimmed = name.trim()
-    if (trimmed.length === 0) return
+    if (invalid) return
     void app.saveFilter(trimmed, query.trim())
     setName(null)
   }
@@ -38,7 +40,9 @@ export function SaveFilter({ app, query }: { app: TodoomApp; query: string }) {
           if (event.key === 'Escape') setName(null)
         }}
       />
-      <button type="submit">Save</button>
+      <button type="submit" disabled={invalid}>
+        Save
+      </button>
       <button type="button" onClick={() => setName(null)}>
         Cancel
       </button>

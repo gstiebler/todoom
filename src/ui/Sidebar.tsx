@@ -130,7 +130,7 @@ export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
             <div className="saved__row" key={saved.name}>
               <button
                 className={
-                  page === 'tasks' && filter.search === saved.query
+                  page === 'tasks' && filter.search.trim() === saved.query
                     ? 'view-btn view-btn--active'
                     : 'view-btn'
                 }

@@ -370,4 +370,11 @@ describe('saved filters', () => {
     expect(app.state.filters).toEqual([{ name: 'Calls', query: '@phone' }])
     expect((await store.read(file)).text).toBe('Calls: @phone\n')
   })
+
+  it('rejects a name containing ": ", which would corrupt filters.txt', async () => {
+    const { app } = await setup()
+    await expect(app.saveFilter('Work: urgent', '+work')).rejects.toThrow(
+      'Filter names cannot contain ": "',
+    )
+  })
 })

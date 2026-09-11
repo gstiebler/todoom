@@ -79,7 +79,7 @@ function term(word: string): Query {
   const dated = /^(due|deadline)(?: (before|after))?:(.+)$/i.exec(word)
   if (dated) {
     const field = (dated[1] ?? '').toLowerCase() as DateField
-    const op = ((dated[2] ?? 'on').toLowerCase()) as 'on' | 'before' | 'after'
+    const op = (dated[2] ?? 'on').toLowerCase() as 'on' | 'before' | 'after'
     return dateTerm(field, op, dated[3] ?? '')
   }
   if (word.length > 1 && word.startsWith('+')) return { kind: 'project', value: word.slice(1) }

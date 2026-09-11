@@ -575,12 +575,23 @@ describe('columns', () => {
     await app.saveFilter('Work', '+work')
     fireEvent.click(root.querySelector('[aria-label="Show House as a column"]')!)
     await waitFor(() => expect(app.columnFilters).toHaveLength(1))
+    act(() => app.setFilter({ search: '+work' }))
     fireEvent.click([...root.querySelectorAll('.view-btn')].find((b) => b.textContent === 'Columns')!)
     expect(root.querySelectorAll('.column')).toHaveLength(1)
     expect(root.querySelector('.column__heading')?.textContent).toBe('House')
     expect(root.querySelector('.column__count')?.textContent).toBe('1')
     expect([...root.querySelectorAll('.column .task__text')].map((el) => el.textContent)).toEqual(['a'])
     expect(root.querySelector('.add-task')).toBeNull()
+  })
+
+  it('shows completed tasks in a column once the sidebar toggle is on', async () => {
+    const { root, app } = await mount('a +house\nx b +house\n')
+    await app.saveFilter('House', '+house')
+    await app.setColumn('House', true)
+    act(() => app.showPage('columns'))
+    expect(root.querySelector('.column__count')?.textContent).toBe('1')
+    act(() => app.setFilter({ showCompleted: true }))
+    expect(root.querySelector('.column__count')?.textContent).toBe('2')
   })
 
   it('completes a task from a column', async () => {

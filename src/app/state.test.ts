@@ -391,6 +391,13 @@ describe('saved filters', () => {
     )
   })
 
+  it('rejects a name starting with "*", which would corrupt filters.txt', async () => {
+    const { app } = await setup()
+    await expect(app.saveFilter('*Fun', '+fun')).rejects.toThrow(
+      'Filter names cannot start with "*"',
+    )
+  })
+
   it('marks and unmarks a filter as a column', async () => {
     const { app, store } = await setup()
     await app.saveFilter('Home', '+home')

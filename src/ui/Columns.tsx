@@ -1,6 +1,7 @@
 import { observer } from 'mobx-react-lite'
 import type { TodoomApp } from '../app/state'
 import type { SavedFilter } from '../core/filters'
+import type { Task } from '../core/types'
 import { emptyFilter, filterTasks, sortTasks } from '../core/query'
 import { TaskRow } from './TaskList'
 
@@ -14,7 +15,7 @@ const Column = observer(function Column({
   today: string
 }) {
   const { tasks, filter: current } = app.state
-  let matching: ReturnType<typeof sortTasks> = []
+  let matching: Task[] = []
   let error: string | null = null
   // A saved query can be edited by hand in filters.txt; a bad one is shown
   // where its tasks would be instead of taking the page down.
@@ -43,7 +44,13 @@ const Column = observer(function Column({
   )
 })
 
-export const Columns = observer(function Columns({ app, today }: { app: TodoomApp; today: string }) {
+export const Columns = observer(function Columns({
+  app,
+  today,
+}: {
+  app: TodoomApp
+  today: string
+}) {
   const filters = app.columnFilters
   if (filters.length === 0) {
     return <p className="columns__empty">Tick a saved filter in the sidebar to show it here.</p>

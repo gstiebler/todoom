@@ -390,6 +390,7 @@ export class TodoomApp {
   /** Adds the filter, or replaces the one already saved under that name. */
   async saveFilter(name: string, query: string): Promise<void> {
     if (name.includes(': ')) throw new Error('Filter names cannot contain ": "')
+    if (name.startsWith('*')) throw new Error('Filter names cannot start with "*"')
     const current = this.state.filters ?? []
     const next = current.some((filter) => filter.name === name)
       ? current.map((filter) => (filter.name === name ? { ...filter, query } : filter))

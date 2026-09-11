@@ -3,11 +3,6 @@
 Planned features, not yet designed. Each entry is a sketch of intent, not a
 spec: brainstorm one before building it.
 
-## Search as modal
-
-Open the search in a modal (a command-palette style box) instead of, or in
-addition to, the sidebar input.
-
 ## Labels in the sidebar
 
 List the projects and contexts in the left panel, collapsed by default and

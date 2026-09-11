@@ -163,3 +163,14 @@ test('shows a dated task on the gantt chart', async ({ page }) => {
   await expect(page.locator('.gantt__bar')).toHaveCount(1)
   await expect(page.locator('.gantt__row')).toHaveText('Buy milk')
 })
+
+test('searches from the palette', async ({ page }) => {
+  await page.goto(PAGE)
+  await page.locator('body').click()
+  await page.keyboard.press('ControlOrMeta+k')
+  await page.locator('.search-modal__input').fill('+house')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.search-modal')).toHaveCount(0)
+  await expect(page.locator('.task')).toHaveCount(1)
+  await expect(page.locator('.search')).toHaveValue('+house')
+})

@@ -762,6 +762,7 @@ button:hover { border-color: var(--accent); }
 .gantt__deadline { stroke: var(--muted); stroke-width: 2; }
 .gantt__deadline--overdue { stroke: var(--overdue); }
 .gantt__arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.gantt__arrowhead { fill: var(--muted); }
 .gantt__empty { color: var(--muted); }
 
 /* The terminal skin: same layout, repainted. It comes last so its square corners

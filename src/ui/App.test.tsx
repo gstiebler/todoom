@@ -651,10 +651,30 @@ describe('gantt', () => {
   })
 
   it('opens the task modal from a bar', async () => {
-    const { root } = await mount('Call due:2026-09-14\n')
+    const { root, app } = await mount('Call due:2026-09-14\n')
     openGantt(root)
     fireEvent.click(root.querySelector('.gantt__bar')!)
     expect(root.querySelector('.task-modal__title')).toHaveProperty('value', 'Call')
+    const title = root.querySelector('.task-modal__title')!
+    fireEvent.change(title, { target: { value: 'Call mum' } })
+    fireEvent.blur(title)
+    expect(root.querySelector('.task-modal__title')).toHaveProperty('value', 'Call mum')
+    expect(app.state.tasks[0]?.description.startsWith('Call mum')).toBe(true)
+  })
+
+  it('keeps a row rendered when the search cannot parse', async () => {
+    const { root } = await mount('Call due:2026-09-14\n')
+    fireEvent.change(root.querySelector('.search')!, { target: { value: '(A' } })
+    openGantt(root)
+    expect(root.querySelectorAll('.gantt__row')).toHaveLength(1)
+  })
+
+  it('routes an arrow around the blocker when the dependant starts earlier', async () => {
+    const { root } = await mount('A id:aaaaaa due:2026-09-15\nB dep:aaaaaa due:2026-09-12\n')
+    openGantt(root)
+    const arrows = root.querySelectorAll('.gantt__arrow')
+    expect(arrows).toHaveLength(1)
+    expect(arrows[0]?.getAttribute('d')?.match(/V/g)?.length).toBeGreaterThanOrEqual(2)
   })
 
   it('narrows the rows with the sidebar search', async () => {

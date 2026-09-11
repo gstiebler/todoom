@@ -161,5 +161,5 @@ test('shows a dated task on the gantt chart', async ({ page }) => {
 
   await page.locator('.view-btn', { hasText: 'Gantt' }).click()
   await expect(page.locator('.gantt__bar')).toHaveCount(1)
-  await expect(page.locator('.gantt__row')).toContainText('Buy milk')
+  await expect(page.locator('.gantt__row')).toHaveText('Buy milk')
 })

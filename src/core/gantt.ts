@@ -62,10 +62,8 @@ export function ganttRange(rows: GanttRow[], today: string): GanttRange {
     if (row.deadline && row.deadline < earliest) earliest = row.deadline
   }
   const from = addInterval(earliest, -PAD_DAYS, 'd')
-  let to = addInterval(latest, PAD_DAYS, 'd')
-  const days = daysBetween(from, to) + 1
-  if (days < MIN_DAYS) to = addInterval(from, MIN_DAYS - 1, 'd')
-  return { from, to, days: Math.max(days, MIN_DAYS) }
+  const days = Math.max(daysBetween(from, addInterval(latest, PAD_DAYS, 'd')) + 1, MIN_DAYS)
+  return { from, to: addInterval(from, days - 1, 'd'), days }
 }
 
 /** Column index of an ISO day inside the range. */

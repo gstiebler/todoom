@@ -6,6 +6,7 @@ import { describeTask } from './describeTask'
 import { AttachmentsPopover } from './AttachmentsPopover'
 import { TaskModal } from './TaskModal'
 import { taskTitle } from '../core/title'
+import { blockerOf } from '../core/deps'
 import { CalendarIcon, PaperclipIcon, RepeatIcon, TagIcon } from './icons'
 
 function Tag({ label, kind }: { label: string; kind: 'project' | 'context' }) {
@@ -31,7 +32,8 @@ const TaskRow = observer(function TaskRow({
   const index = app.indexOf(task)
   const { classes, dueLabel } = describeTask(task, today)
   const rec = task.pairs['rec']
-
+  const blocker = blockerOf(task, app.state.tasks)
+  if (blocker) classes.push('task--blocked')
 
   return (
     <li className={classes.join(' ')}>
@@ -48,6 +50,8 @@ const TaskRow = observer(function TaskRow({
         </span>
 
         {task.note && <p className="task__note">{task.note}</p>}
+
+        {blocker && <p className="task__blocked">Waiting on {taskTitle(blocker)}</p>}
 
         {(dueLabel || rec || task.projects.length > 0 || task.contexts.length > 0) && (
           <div className="task__meta">

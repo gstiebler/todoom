@@ -3,12 +3,6 @@
 Planned features, not yet designed. Each entry is a sketch of intent, not a
 spec: brainstorm one before building it.
 
-## Task dependencies
-
-A task can depend on another task. Add a "depends on" field to the task modal
-where another task is picked. While the task it depends on is not completed,
-the dependent task is shown grayed out.
-
 ## Deadlines
 
 A deadline separate from the due date, as Todoist splits them: the due date is

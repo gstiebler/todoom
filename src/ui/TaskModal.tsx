@@ -9,11 +9,13 @@ import { describeTask } from './describeTask'
 import { AttachmentList } from './AttachmentsPopover'
 import { DatePopover } from './DatePopover'
 import { LabelsPopover } from './LabelsPopover'
+import { DependencyPopover } from './DependencyPopover'
+import { blockerOf, wouldCycle } from '../core/deps'
 import { CalendarIcon, RepeatIcon, TagIcon } from './icons'
 
 const PRIORITIES = ['A', 'B', 'C', 'D']
 
-type Field = 'date' | 'priority' | 'labels' | null
+type Field = 'date' | 'priority' | 'labels' | 'deps' | null
 
 /** The task on its own: the title and description on the left, its fields on the right. */
 export const TaskModal = observer(function TaskModal({
@@ -55,6 +57,10 @@ export const TaskModal = observer(function TaskModal({
     ...collectProjects(app.state.tasks).map((p) => `+${p}`),
     ...collectContexts(app.state.tasks).map((c) => `@${c}`),
   ]
+  const blocker = blockerOf(task, app.state.tasks)
+  const candidates = app.state.tasks.filter(
+    (other) => !other.completed && !wouldCycle(task, other, app.state.tasks),
+  )
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -182,6 +188,31 @@ export const TaskModal = observer(function TaskModal({
                   available={available}
                   selected={labels}
                   onToggle={(label) => change((current) => toggleLabel(current, label))}
+                />
+              )}
+            </section>
+
+            <section className="field field--deps">
+              <h3 className="field__label">Depends on</h3>
+              <button className="field__value" onClick={() => toggle('deps')}>
+                {blocker ? taskTitle(blocker) : 'None'}
+              </button>
+              {blocker && (
+                <button
+                  className="field__clear"
+                  aria-label="Clear dependency"
+                  onClick={() => app.setDependency(index, null)}
+                >
+                  ×
+                </button>
+              )}
+              {field === 'deps' && (
+                <DependencyPopover
+                  candidates={candidates}
+                  onPick={(target) => {
+                    app.setDependency(index, app.indexOf(target))
+                    setField(null)
+                  }}
                 />
               )}
             </section>

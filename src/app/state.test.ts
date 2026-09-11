@@ -288,3 +288,22 @@ describe('attachments', () => {
     expect(ids).toHaveLength(2)
   })
 })
+
+describe('setDependency', () => {
+  it('gives the target an id and points the task at it', async () => {
+    const { app } = await setup('Buy milk\nBake cake\n')
+    app.setDependency(1, 0)
+    const id = app.state.tasks[0]?.pairs['id']
+    expect(id).toMatch(/^[a-z0-9]{6}$/)
+    expect(app.state.tasks[1]?.pairs['dep']).toBe(id)
+    expect(app.state.saveState).toBe('dirty')
+  })
+
+  it('reuses an existing id and can be cleared', async () => {
+    const { app } = await setup('Buy milk id:abc123\nBake cake\n')
+    app.setDependency(1, 0)
+    expect(app.state.tasks[1]?.description).toBe('Bake cake dep:abc123')
+    app.setDependency(1, null)
+    expect(app.state.tasks[1]?.description).toBe('Bake cake')
+  })
+})

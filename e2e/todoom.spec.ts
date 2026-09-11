@@ -74,3 +74,24 @@ test('attaches a file to a task', async ({ page }) => {
   await expect(page.locator('.attachment')).toHaveText(/recipe.txt/)
   await expect(row.locator('.task__attach')).toHaveText('1')
 })
+
+test('makes a task wait on another', async ({ page }) => {
+  await page.goto(PAGE)
+  await page.locator('.task', { hasText: 'Buy milk' }).locator('.task__text').click()
+  const modal = page.locator('.task-modal')
+  await modal.locator('.field--deps .field__value').click()
+  await modal.locator('.dep-option', { hasText: 'Call plumber' }).click()
+  await expect(modal.locator('.field--deps .field__value')).toHaveText('Call plumber')
+  await modal.locator('.task-modal__close').click()
+
+  const row = page.locator('.task', { hasText: 'Buy milk' })
+  await expect(row).toHaveClass(/task--blocked/)
+  await expect(row.locator('.task__blocked')).toHaveText('Waiting on Call plumber')
+
+  // The waiting row now mentions the plumber too, so pick the row by its title.
+  await page
+    .locator('.task', { has: page.locator('.task__text', { hasText: 'Call plumber' }) })
+    .locator('.task__check')
+    .click()
+  await expect(row).not.toHaveClass(/task--blocked/)
+})

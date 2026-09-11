@@ -9,6 +9,7 @@ import { complete, uncomplete, createTask, addAttachment, removeAttachment } fro
 import { nextOccurrence } from '../core/recurrence'
 import { emptyFilter, filterTasks, sortTasks } from '../core/query'
 import { splitCompleted } from '../core/archive'
+import { ensureId, setDependency } from '../core/deps'
 
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
@@ -173,6 +174,22 @@ export class TodoomApp {
     const next = change(task)
     if (next === task) return
     this.state.tasks[index] = next
+    this.markDirty()
+  }
+
+  /** Makes one task wait on another: the target gets an id if it has none yet. */
+  setDependency(index: number, targetIndex: number | null): void {
+    const task = this.state.tasks[index]
+    if (!task) return
+    if (targetIndex === null) {
+      this.state.tasks[index] = setDependency(task, null)
+    } else {
+      const target = this.state.tasks[targetIndex]
+      if (!target) return
+      const withId = ensureId(target)
+      this.state.tasks[targetIndex] = withId
+      this.state.tasks[index] = setDependency(task, withId.pairs['id'] ?? null)
+    }
     this.markDirty()
   }
 

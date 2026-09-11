@@ -404,3 +404,40 @@ describe('task modal', () => {
     expect(root.querySelector('.task-modal')).toBeNull()
   })
 })
+
+describe('task dependencies', () => {
+  function open(root: HTMLElement, title: string): Element {
+    const text = [...root.querySelectorAll('.task__text')].find((t) => t.textContent === title)!
+    fireEvent.click(text)
+    return root.querySelector('.task-modal')!
+  }
+
+  it('picks a dependency in the modal and dims the row while it is open', async () => {
+    const { root, app } = await mount('Buy milk\nBake cake\n')
+    const modal = open(root, 'Bake cake')
+    fireEvent.click(modal.querySelector('.field--deps .field__value')!)
+    const option = [...modal.querySelectorAll('.dep-option')].find((o) =>
+      o.textContent?.includes('Buy milk'),
+    )!
+    fireEvent.click(option)
+
+    expect(modal.querySelector('.field--deps .field__value')?.textContent).toBe('Buy milk')
+    expect(app.state.tasks[1]?.pairs['dep']).toBe(app.state.tasks[0]?.pairs['id'])
+
+    fireEvent.keyDown(modal, { key: 'Escape' })
+    const row = [...root.querySelectorAll('.task')].find((t) => t.textContent?.includes('Bake cake'))!
+    expect(row.className).toContain('task--blocked')
+    expect(row.querySelector('.task__blocked')?.textContent).toBe('Waiting on Buy milk')
+
+    fireEvent.click(root.querySelector('.task .task__check')!)
+    expect(row.className).not.toContain('task--blocked')
+  })
+
+  it('offers neither the task itself nor anything that would loop', async () => {
+    const { root } = await mount('A id:aaaaaa dep:bbbbbb\nB id:bbbbbb\nC\n')
+    const modal = open(root, 'B')
+    fireEvent.click(modal.querySelector('.field--deps .field__value')!)
+    const offered = [...modal.querySelectorAll('.dep-option')].map((o) => o.textContent)
+    expect(offered).toEqual(['C'])
+  })
+})

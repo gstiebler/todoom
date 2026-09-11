@@ -185,3 +185,15 @@ test('searches from the palette', async ({ page }) => {
   await expect(page.locator('.task')).toHaveCount(1)
   await expect(page.locator('.search')).toHaveValue('+house')
 })
+
+test('reorders tasks by dragging in manual sort', async ({ page }) => {
+  await page.goto(PAGE)
+  await page.locator('.sort-btn').click()
+  await expect(page).toHaveURL(/sort=manual/)
+  const rows = page.locator('.task')
+  await expect(rows.first()).toContainText('Call plumber')
+  // Drop in the top half of the first row so the dragged task lands before it.
+  await rows.nth(1).dragTo(rows.first(), { targetPosition: { x: 40, y: 4 } })
+  await expect(rows.first()).toContainText('Buy milk')
+  await expect(page.locator('.task--drop-before')).toHaveCount(0)
+})

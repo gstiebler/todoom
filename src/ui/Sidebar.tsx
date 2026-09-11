@@ -1,26 +1,28 @@
 import { observer } from 'mobx-react-lite'
 import { useEffect, useState } from 'react'
 import type { DueView } from '../core/query'
-import type { TodoomApp } from '../app/state'
+import type { TodoomApp, SaveState } from '../app/state'
+import type { Key } from './i18n'
 import { applyTheme, loadTheme } from './theme'
 import { collectPriorities, countByProject, countByContext, emptyFilter } from '../core/query'
 import { SaveFilter } from './SaveFilter'
 import { AskFilter } from './AskFilter'
 import { LabelSection } from './LabelSection'
+import { useLocale } from './locale'
 
-const STATUS_TEXT: Record<string, string> = {
+const STATUS_TEXT: Record<SaveState, Key | ''> = {
   idle: '',
-  dirty: 'Unsaved changes',
-  saving: 'Saving…',
-  saved: 'Saved',
+  dirty: 'sidebar.unsavedChanges',
+  saving: 'sidebar.saving',
+  saved: 'sidebar.saved',
   error: '',
 }
 
-const VIEWS: Array<[DueView, string]> = [
-  ['all', 'All'],
-  ['overdue', 'Overdue'],
-  ['today', 'Today'],
-  ['upcoming', 'Upcoming'],
+const VIEWS: Array<[DueView, Key]> = [
+  ['all', 'view.all'],
+  ['overdue', 'view.overdue'],
+  ['today', 'view.today'],
+  ['upcoming', 'view.upcoming'],
 ]
 
 function toggleIn(list: string[], value: string): string[] {
@@ -84,17 +86,19 @@ export const Sidebar = observer(function Sidebar({
   const failed = saveState === 'error'
   const [theme, setTheme] = useState(loadTheme)
   useEffect(() => applyTheme(theme), [theme])
+  const { locale, t, setLocale } = useLocale()
+  const statusKey = STATUS_TEXT[saveState]
 
   return (
     <aside className="sidebar">
       <div className="topbar">
         <h1>Todoom</h1>
         <span className={failed ? 'status status--error' : 'status'}>
-          {failed ? (error ?? 'Save failed') : STATUS_TEXT[saveState]}
+          {failed ? (error ?? t('sidebar.saveFailed')) : statusKey ? t(statusKey) : ''}
         </span>
         {failed && (
           <button className="status__retry" onClick={() => void app.save()}>
-            Retry
+            {t('common.retry')}
           </button>
         )}
         <button
@@ -103,16 +107,23 @@ export const Sidebar = observer(function Sidebar({
         >
           {theme === 'terminal' ? 'auto' : 'terminal'}
         </button>
+        <button
+          className="locale-btn"
+          title={t('sidebar.switchLocale')}
+          onClick={() => setLocale(locale === 'en' ? 'pt-BR' : 'en')}
+        >
+          {locale === 'en' ? 'pt' : 'en'}
+        </button>
       </div>
 
       <div className="search-row">
         <input
           className="search"
-          placeholder="Search or filter…"
+          placeholder={t('common.searchPlaceholder')}
           value={filter.search}
           onChange={(event) => app.setFilter({ search: event.target.value })}
         />
-        <button className="search-btn" aria-label="Search" onClick={onSearch}>
+        <button className="search-btn" aria-label={t('common.search')} onClick={onSearch}>
           🔍
         </button>
       </div>
@@ -134,32 +145,32 @@ export const Sidebar = observer(function Sidebar({
               app.setFilter({ dueView: view })
             }}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
         <button
           className={page === 'stats' ? 'view-btn view-btn--active' : 'view-btn'}
           onClick={() => app.showPage('stats')}
         >
-          Stats
+          {t('sidebar.stats')}
         </button>
         <button
           className={page === 'columns' ? 'view-btn view-btn--active' : 'view-btn'}
           onClick={() => app.showPage('columns')}
         >
-          Columns
+          {t('sidebar.columns')}
         </button>
         <button
           className={page === 'gantt' ? 'view-btn view-btn--active' : 'view-btn'}
           onClick={() => app.showPage('gantt')}
         >
-          Gantt
+          {t('sidebar.gantt')}
         </button>
       </nav>
 
       {filters && filters.length > 0 && (
         <nav className="saved">
-          <h2 className="filters__heading">Filters</h2>
+          <h2 className="filters__heading">{t('sidebar.filtersHeading')}</h2>
           {filters.map((saved) => (
             <div className="saved__row" key={saved.name}>
               <button
@@ -178,13 +189,13 @@ export const Sidebar = observer(function Sidebar({
               <input
                 className="saved__column"
                 type="checkbox"
-                aria-label={`Show ${saved.name} as a column`}
+                aria-label={t('sidebar.showAsColumn', { name: saved.name })}
                 checked={saved.column}
                 onChange={(event) => void app.setColumn(saved.name, event.target.checked)}
               />
               <button
                 className="saved__delete"
-                aria-label={`Delete ${saved.name}`}
+                aria-label={t('sidebar.deleteFilter', { name: saved.name })}
                 onClick={() => void app.deleteFilter(saved.name)}
               >
                 ×
@@ -202,19 +213,19 @@ export const Sidebar = observer(function Sidebar({
           className={filter.showCompleted ? 'toggle-btn toggle-btn--active' : 'toggle-btn'}
           onClick={() => app.setFilter({ showCompleted: !filter.showCompleted })}
         >
-          Show completed
+          {t('sidebar.showCompleted')}
         </button>
       </div>
 
       <Chips
-        heading="Priority"
+        heading={t('common.priority')}
         values={withSelected(collectPriorities(tasks), filter.priorities)}
         label={(value) => `(${value})`}
         selected={filter.priorities}
         onToggle={(value) => app.setFilter({ priorities: toggleIn(filter.priorities, value) })}
       />
       <LabelSection
-        heading="Projects"
+        heading={t('sidebar.projectsHeading')}
         storageKey="todoom.labels.projects"
         prefix="+"
         counts={withCounts(countByProject(tasks), filter.projects)}
@@ -222,7 +233,7 @@ export const Sidebar = observer(function Sidebar({
         onToggle={(value) => app.setFilter({ projects: toggleIn(filter.projects, value) })}
       />
       <LabelSection
-        heading="Contexts"
+        heading={t('sidebar.contextsHeading')}
         storageKey="todoom.labels.contexts"
         prefix="@"
         counts={withCounts(countByContext(tasks), filter.contexts)}
@@ -231,7 +242,7 @@ export const Sidebar = observer(function Sidebar({
       />
 
       <button className="archive-btn" onClick={() => void app.archive()}>
-        Archive completed
+        {t('sidebar.archiveCompleted')}
       </button>
     </aside>
   )

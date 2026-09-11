@@ -941,7 +941,7 @@ button:hover { border-color: var(--accent); }
 /* A terminal marks the selection by inverting it, not by tinting white text. */
 [data-theme='terminal'] .view-btn--active { color: var(--bg); }
 
-.theme-btn {
+.theme-btn, .locale-btn {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--muted);
@@ -952,4 +952,4 @@ button:hover { border-color: var(--accent); }
   cursor: pointer;
 }
 
-.theme-btn:hover { color: var(--fg); }
+.theme-btn:hover, .locale-btn:hover { color: var(--fg); }

@@ -1041,3 +1041,25 @@ describe('search modal', () => {
     expect(root.querySelector('.search-modal')).not.toBeNull()
   })
 })
+
+describe('locale', () => {
+  afterEach(() => localStorage.clear())
+
+  it('renders in Portuguese when the browser speaks it', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('pt-BR')
+    const { root } = await mount('Buy milk\n')
+    expect(root.querySelector('.search')?.getAttribute('placeholder')).toBe('Buscar ou filtrar…')
+    expect(document.documentElement.lang).toBe('pt-BR')
+    expect(localStorage.getItem('todoom.locale')).toBeNull()
+  })
+
+  it('switches from the sidebar and remembers it', async () => {
+    const { root } = await mount('Buy milk\n')
+    expect(root.querySelector('.locale-btn')?.textContent).toBe('pt')
+    fireEvent.click(root.querySelector('.locale-btn')!)
+    expect(root.querySelector('.search')?.getAttribute('placeholder')).toBe('Buscar ou filtrar…')
+    expect(root.querySelector('.locale-btn')?.textContent).toBe('en')
+    expect(document.documentElement.lang).toBe('pt-BR')
+    expect(localStorage.getItem('todoom.locale')).toBe('pt-BR')
+  })
+})

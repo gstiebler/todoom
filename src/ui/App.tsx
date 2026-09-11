@@ -9,6 +9,7 @@ import { Columns } from './Columns'
 import { Gantt } from './Gantt'
 import { SearchModal } from './SearchModal'
 import { TaskModal } from './TaskModal'
+import { LocaleProvider } from './locale'
 
 function typing(): boolean {
   const el = document.activeElement
@@ -16,7 +17,15 @@ function typing(): boolean {
   return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
 }
 
-export const App = observer(function App({
+export function App(props: { app: TodoomApp; today: () => string }) {
+  return (
+    <LocaleProvider>
+      <Shell {...props} />
+    </LocaleProvider>
+  )
+}
+
+const Shell = observer(function Shell({
   app,
   today,
 }: {

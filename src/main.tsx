@@ -6,6 +6,7 @@ import { GoogleDriveStore } from './drive/googleStore'
 import type { TodoStore } from './drive/store'
 import { App } from './ui/App'
 import { SignIn } from './ui/SignIn'
+import { loadLocale, t } from './ui/i18n'
 import { filterFromQuery } from './app/urlState'
 import { syncFilterHistory } from './app/urlHistory'
 import { clearWorkspace, createDebouncedSaver, openWorkspace, type Workspace } from './app/session'
@@ -77,30 +78,31 @@ function start(store: TodoStore, workspace: Workspace): void {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('404')) {
         clearWorkspace()
-        showSignIn('That file is gone from Drive. Reload to create a new todo.txt.', [
-          ['Reload', () => window.location.reload()],
+        showSignIn(t(loadLocale(), 'signin.gone'), [
+          [t(loadLocale(), 'signin.reload'), () => window.location.reload()],
         ])
         return
       }
-      showSignIn(message, [['Retry', () => window.location.reload()]])
+      showSignIn(message, [[t(loadLocale(), 'common.retry'), () => window.location.reload()]])
     })
 }
 
 function main(): void {
   const store = new GoogleDriveStore()
+  const locale = loadLocale()
 
   const failed = (error: unknown) => {
     showSignIn(error instanceof Error ? error.message : String(error), [
-      ['Retry', () => window.location.reload()],
+      [t(locale, 'common.retry'), () => window.location.reload()],
     ])
   }
 
   function offerConnect(reason?: string): void {
-    const base = 'Todoom keeps your tasks in a todo.txt file in your Google Drive.'
+    const base = t(locale, 'signin.intro')
     showSignIn(reason ? `${base} (${reason})` : base, [
       // A full navigation, not a fetch: the backend answers with a redirect to
       // Google, and only a top-level load can follow it.
-      ['Connect to Drive', () => window.location.assign('/auth/start')],
+      [t(locale, 'signin.connect'), () => window.location.assign('/auth/start')],
     ])
   }
 

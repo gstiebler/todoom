@@ -675,7 +675,7 @@ button:hover { border-color: var(--accent); }
 /* Drag feedback: the moving row fades, the drop slot is a 2px accent line. */
 .task--dragging { opacity: 0.4; }
 .task--drop-before { box-shadow: inset 0 2px 0 var(--accent); }
-.task--drop-after { box-shadow: 0 2px 0 var(--accent); }
+.task--drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
 
 .task__attach {
   display: inline-flex;

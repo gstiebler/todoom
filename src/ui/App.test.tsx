@@ -1133,3 +1133,20 @@ describe('manual sort', () => {
     expect(done.classList.contains('task--drop-after')).toBe(false)
   })
 })
+
+describe('drag indicator', () => {
+  const dataTransfer = { setData: () => {}, effectAllowed: 'move' }
+
+  it('shows no line for a slot the task already occupies and clears on leave', async () => {
+    const { app, root } = await mount('a\nb\nc\n')
+    act(() => app.setFilter({ sort: 'manual' }))
+    const rows = () => [...root.querySelectorAll('.task')]
+    fireEvent.dragStart(rows()[0]!, { dataTransfer })
+    fireEvent.dragOver(rows()[1]!, { clientY: -1, dataTransfer })
+    expect(root.querySelector('.task--drop-before')).toBeNull()
+    fireEvent.dragOver(rows()[1]!, { clientY: 1, dataTransfer })
+    expect(rows()[1]?.classList.contains('task--drop-after')).toBe(true)
+    fireEvent.dragLeave(rows()[1]!, { dataTransfer })
+    expect(root.querySelector('.task--drop-after')).toBeNull()
+  })
+})

@@ -34,6 +34,9 @@ function start(store: TodoStore, workspace: Workspace, locale: Locale): void {
 
   app.setFilter(filterFromQuery(window.location.search, loadSort()))
   let lastSyncedFilter = app.state.filter
+  // Put the stored sort in the address bar too, so every history entry
+  // describes itself and back/forward can restore it without the preference.
+  syncFilterHistory(lastSyncedFilter, lastSyncedFilter)
 
   // The components observe the store themselves, so these reactions only carry
   // the two side effects: push the filter into the address bar, and start the
@@ -53,7 +56,7 @@ function start(store: TodoStore, workspace: Workspace, locale: Locale): void {
   )
 
   window.addEventListener('popstate', () => {
-    app.setFilter(filterFromQuery(window.location.search, loadSort()))
+    app.setFilter(filterFromQuery(window.location.search))
   })
 
   window.addEventListener('blur', () => void saver.flush())

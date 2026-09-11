@@ -26,7 +26,7 @@ export interface DragProps {
   dragging: boolean
   drop: Half | null
   onStart: () => void
-  onOver: (half: Half) => void
+  onOver: (half: Half | null) => void
   onDrop: () => void
   onEnd: () => void
 }
@@ -69,6 +69,12 @@ export const TaskRow = observer(function TaskRow({
         event.preventDefault()
         const rect = event.currentTarget.getBoundingClientRect()
         drag.onOver(event.clientY < rect.top + rect.height / 2 ? 'before' : 'after')
+      }}
+      onDragLeave={(event) => {
+        // Leaving for a child of the row is not leaving the row.
+        if (drag && !event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          drag.onOver(null)
+        }
       }}
       onDrop={(event) => {
         if (!drag) return
@@ -181,16 +187,27 @@ export const TaskList = observer(function TaskList({
     setDragging(null)
     setTarget(null)
   }
+  // Where the dragged task would land in app.state.tasks: removing `from`
+  // first shifts everything below it up by one.
+  const destination = (from: number, index: number, half: Half) => {
+    const slot = half === 'before' ? index : index + 1
+    return from < slot ? slot - 1 : slot
+  }
   const dragFor = (index: number): DragProps => ({
     dragging: dragging === index,
     drop: target?.index === index ? target.half : null,
     onStart: () => setDragging(index),
-    onOver: (half) => setTarget({ index, half }),
+    onOver: (half) => {
+      // No line for a slot the task already occupies.
+      if (half === null || dragging === null || destination(dragging, index, half) === dragging) {
+        setTarget(null)
+        return
+      }
+      setTarget({ index, half })
+    },
     onDrop: () => {
       if (dragging !== null && target !== null) {
-        // Removing `from` first shifts everything below it up by one.
-        const slot = target.half === 'before' ? target.index : target.index + 1
-        app.moveTask(dragging, dragging < slot ? slot - 1 : slot)
+        app.moveTask(dragging, destination(dragging, target.index, target.half))
       }
       clear()
     },

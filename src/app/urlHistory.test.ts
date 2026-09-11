@@ -24,6 +24,9 @@ describe('syncFilterHistory', () => {
 
     syncFilterHistory(overdue, today)
     expect(pushSpy).toHaveBeenCalledTimes(2)
+
+    syncFilterHistory(today, { ...today, sort: 'manual' })
+    expect(pushSpy).toHaveBeenCalledTimes(3)
   })
 
   it('replaces rather than pushes for repeated search-box changes', () => {

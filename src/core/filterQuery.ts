@@ -1,4 +1,6 @@
-import { isValidDate } from './dates'
+import type { Task } from './types'
+import { addInterval, isValidDate } from './dates'
+import { blockerOf } from './deps'
 
 export type DateField = 'due' | 'deadline'
 export type DateOp = 'on' | 'before' | 'after' | 'none' | 'overdue'
@@ -154,4 +156,61 @@ export function parseQuery(text: string): Query | null {
   // Only a stray `)` can stop parseOr before the end.
   if (!parser.done()) throw new Error('Unexpected )')
   return query
+}
+
+function resolveDate(value: string, today: string): string {
+  if (value === 'today') return today
+  if (value === 'tomorrow') return addInterval(today, 1, 'd')
+  if (value === 'yesterday') return addInterval(today, -1, 'd')
+  return value
+}
+
+function dateOf(task: Task, field: DateField): string | undefined {
+  const value = task.pairs[field]
+  return value && isValidDate(value) ? value : undefined
+}
+
+// Valid ISO dates sort as strings, so the comparisons need no parsing.
+function matchesDate(
+  query: Extract<Query, { kind: 'date' }>,
+  task: Task,
+  today: string,
+): boolean {
+  const date = dateOf(task, query.field)
+  if (query.op === 'none') return date === undefined
+  if (date === undefined) return false
+  if (query.op === 'overdue') return date < today
+  const target = resolveDate(query.value ?? today, today)
+  if (query.op === 'on') return date === target
+  return query.op === 'before' ? date < target : date > target
+}
+
+export function matchesQuery(query: Query, task: Task, tasks: Task[], today: string): boolean {
+  switch (query.kind) {
+    case 'text':
+      return (
+        task.raw.toLowerCase().includes(query.value) ||
+        task.description.toLowerCase().includes(query.value)
+      )
+    case 'project':
+      return task.projects.includes(query.value)
+    case 'context':
+      return task.contexts.includes(query.value)
+    case 'priority':
+      return query.value === null ? task.priority === undefined : task.priority === query.value
+    case 'date':
+      return matchesDate(query, task, today)
+    case 'done':
+      return task.completed
+    case 'blocked':
+      return blockerOf(task, tasks) !== undefined
+    case 'rec':
+      return task.pairs['rec'] !== undefined
+    case 'not':
+      return !matchesQuery(query.query, task, tasks, today)
+    case 'and':
+      return query.queries.every((q) => matchesQuery(q, task, tasks, today))
+    case 'or':
+      return query.queries.some((q) => matchesQuery(q, task, tasks, today))
+  }
 }

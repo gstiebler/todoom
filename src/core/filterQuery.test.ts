@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { parseQuery } from './filterQuery'
+import { parseQuery, matchesQuery } from './filterQuery'
+import { parseFile } from './parse'
 
 describe('parseQuery terms', () => {
   test('is null for blank text', () => {
@@ -153,5 +154,63 @@ describe('parseQuery operators', () => {
 
   test('rejects an empty group', () => {
     expect(() => parseQuery('()')).toThrow('Empty parentheses')
+  })
+})
+
+const TODAY = '2026-09-10'
+
+const tasks = parseFile(
+  [
+    '(A) Call plumber +house @phone due:2026-09-10 id:abc123',
+    'Buy milk +groceries @store due:2026-09-01 rec:1w',
+    'Read book @home deadline:2026-09-11 dep:abc123',
+    'Plan trip @home due:2026-09-30',
+    'x 2026-09-09 Old task +house',
+  ].join('\n'),
+)
+
+function matching(text: string): string[] {
+  const query = parseQuery(text)
+  if (!query) throw new Error('blank query')
+  return tasks.filter((task) => matchesQuery(query, task, tasks, TODAY)).map((t) => t.description)
+}
+
+describe('matchesQuery', () => {
+  test('text searches the raw line case-insensitively', () => {
+    expect(matching('MILK')).toEqual(['Buy milk +groceries @store due:2026-09-01 rec:1w'])
+  })
+
+  test('projects, contexts and priorities', () => {
+    expect(matching('+house')).toHaveLength(2)
+    expect(matching('@home')).toHaveLength(2)
+    expect(matching('(A)')).toHaveLength(1)
+    expect(matching('no pri')).toHaveLength(4)
+  })
+
+  test('due dates relative to today', () => {
+    expect(matching('due:today').map((d) => d.split(' ')[0])).toEqual(['Call'])
+    expect(matching('overdue').map((d) => d.split(' ')[0])).toEqual(['Buy'])
+    expect(matching('due before:tomorrow')).toHaveLength(2)
+    expect(matching('due after:today').map((d) => d.split(' ')[0])).toEqual(['Plan'])
+    expect(matching('due:2026-09-30')).toHaveLength(1)
+    expect(matching('no date')).toHaveLength(2)
+  })
+
+  test('deadlines', () => {
+    expect(matching('deadline:tomorrow').map((d) => d.split(' ')[0])).toEqual(['Read'])
+    expect(matching('deadline:overdue')).toHaveLength(0)
+    expect(matching('no deadline')).toHaveLength(4)
+  })
+
+  test('done, blocked and rec', () => {
+    expect(matching('done').map((d) => d.split(' ')[0])).toEqual(['Old'])
+    expect(matching('blocked').map((d) => d.split(' ')[0])).toEqual(['Read'])
+    expect(matching('rec').map((d) => d.split(' ')[0])).toEqual(['Buy'])
+  })
+
+  test('combines with the operators', () => {
+    expect(matching('@home & !blocked').map((d) => d.split(' ')[0])).toEqual(['Plan'])
+    expect(matching('(A) | rec')).toHaveLength(2)
+    expect(matching('!(+house | @home)').map((d) => d.split(' ')[0])).toEqual(['Buy'])
   })
 })

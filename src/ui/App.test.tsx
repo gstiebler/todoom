@@ -732,6 +732,33 @@ describe('search modal', () => {
     expect(root.querySelector('.search-modal')).toBeNull()
   })
 
+  it('keeps owning Ctrl+K while open and prevents the browser default', async () => {
+    const { root } = await mount('Buy milk\n')
+    openSearch(root)
+    const event = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      cancelable: true,
+      bubbles: true,
+    })
+    act(() => {
+      window.dispatchEvent(event)
+    })
+    expect(event.defaultPrevented).toBe(true)
+    expect(root.querySelectorAll('.search-modal')).toHaveLength(1)
+  })
+
+  it('closes on Escape even after the input loses focus', async () => {
+    const { root, app } = await mount('Call +house\nBuy milk\n')
+    fireEvent.change(root.querySelector('.search')!, { target: { value: 'milk' } })
+    const input = openSearch(root)
+    fireEvent.change(input, { target: { value: 'nothing' } })
+    fireEvent.click(root.querySelector('.search-modal__results')!)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(root.querySelector('.search-modal')).toBeNull()
+    expect(app.state.filter.search).toBe('milk')
+  })
+
   it('narrows the preview and the list behind while typing', async () => {
     const { root, app } = await mount('Call +house\nBuy milk +groceries\nA +house\n')
     const input = openSearch(root)

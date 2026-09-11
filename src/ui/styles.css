@@ -797,6 +797,12 @@ button:hover { border-color: var(--accent); }
   padding: 6px 8px;
   border-radius: 6px;
   cursor: pointer;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
 }
 .search-modal__row:hover { background: var(--surface); }
 .search-modal__title {

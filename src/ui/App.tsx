@@ -33,9 +33,21 @@ export const App = observer(function App({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const palette = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k'
+      const palette =
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === 'k'
+      if (palette) {
+        // Prevent the browser's own Cmd/Ctrl+K before the dialog guard, so it
+        // never fires while a dialog is already open.
+        event.preventDefault()
+        if (document.querySelector('[role="dialog"]')) return
+        openSearch()
+        return
+      }
       const slash = event.key === '/' && !typing()
-      if (!palette && !slash) return
+      if (!slash) return
       // Any open dialog, including this one, owns the keyboard.
       if (document.querySelector('[role="dialog"]')) return
       event.preventDefault()

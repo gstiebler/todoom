@@ -32,6 +32,17 @@ export const SearchModal = observer(function SearchModal({
     onClose()
   }
 
+  // Escape is watched on the window: after clicking a row the input isn't
+  // necessarily what holds focus, so a listener on the input alone would miss it.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      cancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
@@ -50,7 +61,6 @@ export const SearchModal = observer(function SearchModal({
           onChange={(event) => app.setFilter({ search: event.target.value })}
           onKeyDown={(event) => {
             if (event.key === 'Enter') onClose()
-            if (event.key === 'Escape') cancel()
           }}
         />
         {queryError && <p className="query-error">{queryError}</p>}
@@ -58,18 +68,20 @@ export const SearchModal = observer(function SearchModal({
           {preview.map((task) => {
             const { dueLabel } = describeTask(task, today)
             return (
-              <li
-                key={app.indexOf(task)}
-                className="search-modal__row"
-                onClick={() => onPick(app.indexOf(task))}
-              >
-                <span className="search-modal__title">{taskTitle(task)}</span>
-                {dueLabel && <span className="search-modal__due">{dueLabel}</span>}
-                {task.projects.map((project) => (
-                  <span key={project} className="search-modal__project">
-                    +{project}
-                  </span>
-                ))}
+              <li key={app.indexOf(task)}>
+                <button
+                  type="button"
+                  className="search-modal__row"
+                  onClick={() => onPick(app.indexOf(task))}
+                >
+                  <span className="search-modal__title">{taskTitle(task)}</span>
+                  {dueLabel && <span className="search-modal__due">{dueLabel}</span>}
+                  {task.projects.map((project) => (
+                    <span key={project} className="search-modal__project">
+                      +{project}
+                    </span>
+                  ))}
+                </button>
               </li>
             )
           })}

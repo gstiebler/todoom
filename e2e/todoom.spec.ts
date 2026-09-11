@@ -166,7 +166,8 @@ test('shows a dated task on the gantt chart', async ({ page }) => {
 
 test('searches from the palette', async ({ page }) => {
   await page.goto(PAGE)
-  await page.locator('body').click()
+  // Ctrl+K needs the page focused first; the h1 is a safe click target.
+  await page.locator('h1').click()
   await page.keyboard.press('ControlOrMeta+k')
   await page.locator('.search-modal__input').fill('+house')
   await page.keyboard.press('Enter')

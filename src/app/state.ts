@@ -188,7 +188,7 @@ export class TodoomApp {
   /** Runs the failed operation again with the same file or id. */
   async retryAttachment(taskId: string, key: string): Promise<void> {
     const entry = this.findPending(taskId, key)
-    if (!entry) return
+    if (!entry || entry.error === null) return
     runInAction(() => {
       entry.error = null
     })

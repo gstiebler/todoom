@@ -134,7 +134,7 @@ const PendingMark = observer(function PendingMark({
   taskId: string
   entry: PendingAttachment
 }) {
-  if (entry.error === null) return <span className="spinner" aria-label="Working" />
+  if (entry.error === null) return <span className="spinner" role="status" aria-label="Working" />
   return (
     <>
       <span className="attachment__error">{entry.error}</span>

@@ -752,7 +752,13 @@ button:hover { border-color: var(--accent); }
 .attachment__name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachment--pending { opacity: 0.6; }
 .attachment--failed { flex-wrap: wrap; }
-.attachment--failed .attachment__error { flex-basis: 100%; color: var(--overdue); font-size: 12px; }
+/* The message takes its own line under the name and the buttons. */
+.attachment--failed .attachment__error {
+  order: 1;
+  flex-basis: 100%;
+  color: var(--overdue);
+  font-size: 12px;
+}
 .attachment__retry { padding: 2px 8px; font-size: 12px; }
 
 .spinner {

@@ -44,7 +44,10 @@ function row(root: HTMLElement, label: string): Element {
   )!
 }
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 describe('App', () => {
   it('renders one row per visible task', async () => {

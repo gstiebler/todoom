@@ -3,15 +3,6 @@
 Planned features, not yet designed. Each entry is a sketch of intent, not a
 spec: brainstorm one before building it.
 
-## Completion charts
-
-Charts of tasks completed per day and per week.
-
-## Streak chart
-
-A square per day, colored by how many tasks were completed that day — the
-GitHub contributions graph, for completions.
-
 ## Smart filters
 
 A small query language for the search box, along the lines of

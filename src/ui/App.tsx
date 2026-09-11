@@ -3,6 +3,7 @@ import type { TodoomApp } from '../app/state'
 import { AddTask } from './AddTask'
 import { Sidebar } from './Sidebar'
 import { TaskList } from './TaskList'
+import { Stats } from './Stats'
 
 export const App = observer(function App({
   app,
@@ -15,8 +16,14 @@ export const App = observer(function App({
     <div className="app">
       <Sidebar app={app} />
       <main className="main">
-        <AddTask app={app} today={today()} />
-        <TaskList app={app} today={today()} />
+        {app.state.page === 'stats' ? (
+          <Stats app={app} today={today()} />
+        ) : (
+          <>
+            <AddTask app={app} today={today()} />
+            <TaskList app={app} today={today()} />
+          </>
+        )}
       </main>
     </div>
   )

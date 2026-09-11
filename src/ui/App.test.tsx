@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
-import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { App } from './App'
 import { TodoomApp } from '../app/state'
 import { FakeStore } from '../drive/fakeStore'
@@ -215,7 +215,7 @@ describe('sidebar layout', () => {
   it('keeps the completed toggle out of the exclusive view group', async () => {
     const { root } = await mount('Buy milk\n')
     const views = [...root.querySelectorAll('.views .view-btn')].map((b) => b.textContent)
-    expect(views).toEqual(['All', 'Overdue', 'Today', 'Upcoming'])
+    expect(views).toEqual(['All', 'Overdue', 'Today', 'Upcoming', 'Stats'])
 
     const toggle = root.querySelector<HTMLButtonElement>('.toggles .toggle-btn')
     expect(toggle?.textContent).toBe('Show completed')
@@ -454,5 +454,21 @@ describe('task dependencies', () => {
     fireEvent.click(modal.querySelector('.field--deps .field__value')!)
     const offered = [...modal.querySelectorAll('.dep-option')].map((o) => o.textContent)
     expect(offered).toEqual(['C'])
+  })
+})
+
+describe('stats page', () => {
+  it('opens from the sidebar and draws the history', async () => {
+    const { root, app } = await mount('x 2026-09-10 Buy milk\nCall plumber\n')
+    fireEvent.click([...root.querySelectorAll('.view-btn')].find((b) => b.textContent === 'Stats')!)
+    await waitFor(() => expect(root.querySelector('.streak__grid')).not.toBeNull())
+    expect(app.state.archived).toEqual([])
+    expect(root.querySelector('.add-task')).toBeNull()
+    expect(root.querySelectorAll('.streak__day')).toHaveLength(52 * 7)
+    expect(root.querySelectorAll('.streak__day--4')).toHaveLength(1)
+    expect(root.querySelector('.stats__note')?.textContent).toBe('1 day running')
+
+    fireEvent.click([...root.querySelectorAll('.view-btn')].find((b) => b.textContent === 'All')!)
+    expect(root.querySelector('.add-task')).not.toBeNull()
   })
 })

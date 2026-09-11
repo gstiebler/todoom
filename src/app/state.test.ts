@@ -307,3 +307,21 @@ describe('setDependency', () => {
     expect(app.state.tasks[1]?.description).toBe('Bake cake')
   })
 })
+
+describe('loadHistory', () => {
+  it('reads the archived tasks from done.txt', async () => {
+    const { app } = await setup('Buy milk\n')
+    expect(app.state.archived).toBeNull()
+    app.addTask('Old chore')
+    app.toggleComplete(1)
+    await app.archive()
+    await app.loadHistory()
+    expect(app.state.archived?.map((t) => t.description)).toEqual(['Old chore'])
+  })
+
+  it('is empty when nothing was ever archived', async () => {
+    const { app } = await setup('Buy milk\n')
+    await app.loadHistory()
+    expect(app.state.archived).toEqual([])
+  })
+})

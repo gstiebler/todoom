@@ -643,6 +643,44 @@ button:hover { border-color: var(--accent); }
 .signin { text-align: center; padding: 64px 0; }
 .signin p { color: var(--muted); }
 
+/* Stats: plain divs on a grid, so the skins repaint them for free. */
+.stats { display: flex; flex-direction: column; gap: 28px; }
+.stats__title { margin: 0 0 4px; font-size: 15px; }
+.stats__note { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 140px; }
+.bars__col {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.bars__bar { background: var(--accent); min-height: 2px; border-radius: 2px 2px 0 0; }
+.bars__label {
+  height: 16px;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.streak { overflow-x: auto; }
+.streak__months, .streak__grid {
+  display: grid;
+  grid-template-columns: repeat(52, 12px);
+  gap: 2px;
+}
+.streak__month { font-size: 10px; color: var(--muted); white-space: nowrap; height: 14px; }
+.streak__grid { grid-auto-flow: column; grid-template-rows: repeat(7, 12px); }
+.streak__day { width: 12px; height: 12px; border-radius: 2px; background: var(--border); }
+.streak__day--future { background: transparent; }
+.streak__day--1 { background: color-mix(in srgb, var(--accent) 30%, var(--border)); }
+.streak__day--2 { background: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.streak__day--3 { background: color-mix(in srgb, var(--accent) 80%, var(--border)); }
+.streak__day--4 { background: var(--accent); }
+
 /* The terminal skin: same layout, repainted. It comes last so its square corners
    win over the rounded ones above without needing !important. */
 [data-theme='terminal'] {

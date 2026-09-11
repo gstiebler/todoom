@@ -61,7 +61,7 @@ function Chips({
 }
 
 export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
-  const { tasks, filter, saveState, error } = app.state
+  const { tasks, filter, saveState, error, page } = app.state
   const failed = saveState === 'error'
   const [theme, setTheme] = useState(loadTheme)
   useEffect(() => applyTheme(theme), [theme])
@@ -97,12 +97,23 @@ export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
         {VIEWS.map(([view, label]) => (
           <button
             key={view}
-            className={filter.dueView === view ? 'view-btn view-btn--active' : 'view-btn'}
-            onClick={() => app.setFilter({ dueView: view })}
+            className={
+              page === 'tasks' && filter.dueView === view ? 'view-btn view-btn--active' : 'view-btn'
+            }
+            onClick={() => {
+              app.showPage('tasks')
+              app.setFilter({ dueView: view })
+            }}
           >
             {label}
           </button>
         ))}
+        <button
+          className={page === 'stats' ? 'view-btn view-btn--active' : 'view-btn'}
+          onClick={() => app.showPage('stats')}
+        >
+          Stats
+        </button>
       </nav>
 
       {/* Completed is an independent toggle, not one of the exclusive views

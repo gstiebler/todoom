@@ -19,6 +19,9 @@ function isErrorState(state: AppState): boolean {
 
 export interface AppState {
   tasks: Task[]
+  /** What done.txt held the last time the Stats view asked; null until it does. */
+  archived: Task[] | null
+  page: 'tasks' | 'stats'
   filter: Filter
   saveState: SaveState
   error: string | null
@@ -28,6 +31,8 @@ export interface AppState {
 export class TodoomApp {
   readonly state: AppState = {
     tasks: [],
+    archived: null,
+    page: 'tasks',
     filter: emptyFilter(),
     saveState: 'idle',
     error: null,
@@ -213,6 +218,10 @@ export class TodoomApp {
     this.markDirty()
   }
 
+  showPage(page: AppState['page']): void {
+    this.state.page = page
+  }
+
   setFilter(patch: Partial<Filter>): void {
     this.state.filter = { ...this.state.filter, ...patch }
   }
@@ -264,6 +273,15 @@ export class TodoomApp {
     const current = await this.store.getModifiedTime(workspace.todo)
     if (current === this.state.loadedModifiedTime) return
     await this.load(workspace)
+  }
+
+  /** Reads done.txt so the charts can count completions that left todo.txt. */
+  async loadHistory(): Promise<void> {
+    const done = await this.store.findOrCreateFileIn(this.folder, 'done.txt')
+    const { text } = await this.store.read(done)
+    runInAction(() => {
+      this.state.archived = parseFile(text)
+    })
   }
 
   async archive(): Promise<number> {

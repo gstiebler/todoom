@@ -154,9 +154,10 @@ bubbles to the form's error line; the button stays so the user can retry.
 
 ## Errors
 
-The only `try/catch` is around the first `parseQuery` in `translate`, to
-drive the single retry. Model and download errors bubble; the form shows
-their message. No new error types.
+The only `try/catch` in `app` is around the first `parseQuery` in
+`translate`, to drive the single retry. Model and download errors bubble to
+the form, which catches the rejected promise to show its message — a form
+has no caller to bubble to. No new error types.
 
 ## Testing
 

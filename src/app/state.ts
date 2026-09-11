@@ -38,7 +38,7 @@ export interface AppState {
   archived: Task[] | null
   /** What filters.txt holds; null until the workspace has loaded. */
   filters: SavedFilter[] | null
-  page: 'tasks' | 'stats'
+  page: 'tasks' | 'stats' | 'columns'
   filter: Filter
   saveState: SaveState
   error: string | null
@@ -399,6 +399,18 @@ export class TodoomApp {
 
   async deleteFilter(name: string): Promise<void> {
     await this.writeFilters((this.state.filters ?? []).filter((filter) => filter.name !== name))
+  }
+
+  async setColumn(name: string, column: boolean): Promise<void> {
+    await this.writeFilters(
+      (this.state.filters ?? []).map((filter) =>
+        filter.name === name ? { ...filter, column } : filter,
+      ),
+    )
+  }
+
+  get columnFilters(): SavedFilter[] {
+    return (this.state.filters ?? []).filter((filter) => filter.column)
   }
 
   async archive(): Promise<number> {

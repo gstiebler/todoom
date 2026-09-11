@@ -390,6 +390,18 @@ describe('saved filters', () => {
       'Filter names cannot contain ": "',
     )
   })
+
+  it('marks and unmarks a filter as a column', async () => {
+    const { app, store } = await setup()
+    await app.saveFilter('Home', '+home')
+    await app.saveFilter('Calls', '@phone')
+    await app.setColumn('Calls', true)
+    expect(app.columnFilters).toEqual([{ name: 'Calls', query: '@phone', column: true }])
+    const file = await store.findOrCreateFileIn(app.folder, 'filters.txt')
+    expect((await store.read(file)).text).toBe('Home: +home\n* Calls: @phone\n')
+    await app.setColumn('Calls', false)
+    expect(app.columnFilters).toEqual([])
+  })
 })
 
 describe('translate', () => {

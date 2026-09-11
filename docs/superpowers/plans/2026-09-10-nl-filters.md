@@ -15,7 +15,7 @@
 - Only `src/app/languageModel.ts` may reference `LanguageModel`; it declares the global itself, no `@types` package is added.
 - The OAuth scope, token handling and the Worker are untouched.
 - No test calls the real model; every test injects a fake `LanguageModelAdapter`.
-- The only `try/catch` added is the one around the first `parseQuery` in `translate`. Model and download errors bubble.
+- In `app`, the only `try/catch` is the one around the first `parseQuery` in `translate`; model and download errors bubble to the form, which catches them to show the message.
 - House style: single quotes, no semicolons, ~100 columns, comments only where the code does not say why.
 - The terminal skin block (`[data-theme='terminal'] …`) stays last in `src/ui/styles.css`.
 - Nothing pre-existing is migrated.

@@ -216,7 +216,7 @@ describe('sidebar layout', () => {
   it('keeps the completed toggle out of the exclusive view group', async () => {
     const { root } = await mount('Buy milk\n')
     const views = [...root.querySelectorAll('.views .view-btn')].map((b) => b.textContent)
-    expect(views).toEqual(['All', 'Overdue', 'Today', 'Upcoming', 'Stats'])
+    expect(views).toEqual(['All', 'Overdue', 'Today', 'Upcoming', 'Stats', 'Columns'])
 
     const toggle = root.querySelector<HTMLButtonElement>('.toggles .toggle-btn')
     expect(toggle?.textContent).toBe('Show completed')
@@ -557,5 +557,47 @@ describe('describe a filter', () => {
     await waitFor(() => expect(root.querySelector('.ask-filter__form .query-error')).not.toBeNull())
     expect(root.querySelector('.ask-filter__form .query-error')?.textContent).toBe('Unexpected |')
     expect(root.querySelector<HTMLInputElement>('.search')?.value).toBe('')
+  })
+})
+
+describe('columns', () => {
+  it('shows a hint until a filter is ticked', async () => {
+    const { root, app } = await mount('a +house\n')
+    act(() => app.showPage('columns'))
+    expect(root.querySelector('.columns__empty')?.textContent).toBe(
+      'Tick a saved filter in the sidebar to show it here.',
+    )
+  })
+
+  it('renders one column per ticked filter with its tasks', async () => {
+    const { root, app } = await mount('a +house\nb +work\nx c +house\n')
+    await app.saveFilter('House', '+house')
+    await app.saveFilter('Work', '+work')
+    fireEvent.click(root.querySelector('[aria-label="Show House as a column"]')!)
+    await waitFor(() => expect(app.columnFilters).toHaveLength(1))
+    fireEvent.click([...root.querySelectorAll('.view-btn')].find((b) => b.textContent === 'Columns')!)
+    expect(root.querySelectorAll('.column')).toHaveLength(1)
+    expect(root.querySelector('.column__heading')?.textContent).toBe('House')
+    expect(root.querySelector('.column__count')?.textContent).toBe('1')
+    expect([...root.querySelectorAll('.column .task__text')].map((el) => el.textContent)).toEqual(['a'])
+    expect(root.querySelector('.add-task')).toBeNull()
+  })
+
+  it('completes a task from a column', async () => {
+    const { root, app } = await mount('a +house\n')
+    await app.saveFilter('House', '+house')
+    await app.setColumn('House', true)
+    act(() => app.showPage('columns'))
+    fireEvent.click(root.querySelector('.column .task__check')!)
+    expect(app.state.tasks[0]?.completed).toBe(true)
+    expect(root.querySelector('.column__count')?.textContent).toBe('0')
+  })
+
+  it('shows the parse error in a broken column', async () => {
+    const { root, app } = await mount('a\n')
+    await app.saveFilter('Bad', '+house |')
+    await app.setColumn('Bad', true)
+    act(() => app.showPage('columns'))
+    expect(root.querySelector('.column .query-error')?.textContent).toBe('Missing a term at the end')
   })
 })

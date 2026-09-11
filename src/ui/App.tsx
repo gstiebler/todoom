@@ -4,6 +4,7 @@ import { AddTask } from './AddTask'
 import { Sidebar } from './Sidebar'
 import { TaskList } from './TaskList'
 import { Stats } from './Stats'
+import { Columns } from './Columns'
 
 export const App = observer(function App({
   app,
@@ -18,6 +19,8 @@ export const App = observer(function App({
       <main className="main">
         {app.state.page === 'stats' ? (
           <Stats app={app} today={today()} />
+        ) : app.state.page === 'columns' ? (
+          <Columns app={app} today={today()} />
         ) : (
           <>
             <AddTask app={app} today={today()} />

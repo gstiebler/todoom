@@ -123,6 +123,12 @@ export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
         >
           Stats
         </button>
+        <button
+          className={page === 'columns' ? 'view-btn view-btn--active' : 'view-btn'}
+          onClick={() => app.showPage('columns')}
+        >
+          Columns
+        </button>
       </nav>
 
       {filters && filters.length > 0 && (
@@ -143,6 +149,13 @@ export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
               >
                 {saved.name}
               </button>
+              <input
+                className="saved__column"
+                type="checkbox"
+                aria-label={`Show ${saved.name} as a column`}
+                checked={saved.column}
+                onChange={(event) => void app.setColumn(saved.name, event.target.checked)}
+              />
               <button
                 className="saved__delete"
                 aria-label={`Delete ${saved.name}`}

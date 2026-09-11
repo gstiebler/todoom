@@ -18,7 +18,7 @@ function Tag({ label, kind }: { label: string; kind: 'project' | 'context' }) {
   )
 }
 
-const TaskRow = observer(function TaskRow({
+export const TaskRow = observer(function TaskRow({
   app,
   task,
   today,

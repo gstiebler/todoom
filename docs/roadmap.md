@@ -3,11 +3,6 @@
 Planned features, not yet designed. Each entry is a sketch of intent, not a
 spec: brainstorm one before building it.
 
-## Labels in the sidebar
-
-List the projects and contexts in the left panel, collapsed by default and
-optionally expanded, so a label can be picked without typing.
-
 ## Attachment preview
 
 Show a preview of an attachment (image, PDF, text) without leaving the app.

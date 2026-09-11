@@ -29,7 +29,11 @@ export function LabelSection({
 
   return (
     <section className="labels">
-      <button className="labels__heading" onClick={() => setOpen(!open)}>
+      <button
+        className="labels__heading"
+        aria-expanded={expanded}
+        onClick={() => setOpen(!open)}
+      >
         {expanded ? '▾' : '▸'} {heading}
         {suffix}
       </button>

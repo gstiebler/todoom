@@ -1,5 +1,6 @@
 import type { Task } from './types'
 import { daysBetween, isValidDate } from './dates'
+import { matchesQuery, parseQuery } from './filterQuery'
 
 export type DueView = 'all' | 'overdue' | 'today' | 'upcoming'
 
@@ -55,7 +56,7 @@ function matchesDueView(task: Task, view: DueView, today: string): boolean {
 }
 
 export function filterTasks(tasks: Task[], filter: Filter, today: string): Task[] {
-  const needle = filter.search.trim().toLowerCase()
+  const query = parseQuery(filter.search)
   return tasks.filter((task) => {
     if (!filter.showCompleted && task.completed) return false
     if (filter.projects.length > 0 && !filter.projects.some((p) => task.projects.includes(p))) {
@@ -67,9 +68,7 @@ export function filterTasks(tasks: Task[], filter: Filter, today: string): Task[
     if (filter.priorities.length > 0) {
       if (task.priority === undefined || !filter.priorities.includes(task.priority)) return false
     }
-    if (needle.length > 0 && !task.raw.toLowerCase().includes(needle)) {
-      if (!task.description.toLowerCase().includes(needle)) return false
-    }
+    if (query && !matchesQuery(query, task, tasks, today)) return false
     if (!matchesDueView(task, filter.dueView, today)) return false
     return true
   })

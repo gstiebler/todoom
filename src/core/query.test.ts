@@ -102,6 +102,34 @@ describe('filterTasks', () => {
   })
 })
 
+describe('filterTasks with a query', () => {
+  it('reads operators in the search text', () => {
+    const filter = { ...emptyFilter(), search: '@home & !due:2026-09-14' }
+    expect(filterTasks(sample, filter, TODAY).map((t) => t.description)).toEqual([
+      'Plan trip @home due:2026-09-30',
+    ])
+  })
+
+  it('ands the query with the chips', () => {
+    const filter = { ...emptyFilter(), search: 'due:today | overdue', projects: ['house'] }
+    expect(filterTasks(sample, filter, TODAY).map((t) => t.description)).toEqual([
+      'Email landlord +house @computer due:2026-09-10',
+    ])
+  })
+
+  it('keeps completed tasks hidden even when the query asks for done', () => {
+    expect(filterTasks(sample, { ...emptyFilter(), search: 'done' }, TODAY)).toEqual([])
+    const shown = { ...emptyFilter(), search: 'done', showCompleted: true }
+    expect(filterTasks(sample, shown, TODAY).map((t) => t.description)).toEqual(['Old task +house'])
+  })
+
+  it('throws on a syntax error', () => {
+    expect(() => filterTasks(sample, { ...emptyFilter(), search: '(+house' }, TODAY)).toThrow(
+      'Missing a closing parenthesis',
+    )
+  })
+})
+
 describe('sortTasks', () => {
   it('orders incomplete before complete, then priority, then due date', () => {
     const tasks = parseFile(

@@ -28,6 +28,8 @@ export class FakeStore implements TodoStore {
   private pendingWriteGate: { markStarted: () => void; releaseGate: Promise<void> } | null = null
   private failingWrites = new Set<string>()
   private failingUploads = 0
+  private failingTrash = false
+  private uploadGate: Promise<void> | null = null
 
   constructor(seed: Record<string, string> = {}) {
     for (const [name, text] of Object.entries(seed)) {
@@ -135,6 +137,11 @@ export class FakeStore implements TodoStore {
       this.failingUploads -= 1
       throw new Error(`simulated upload failure for ${file.name}`)
     }
+    if (this.uploadGate) {
+      const gate = this.uploadGate
+      this.uploadGate = null
+      await gate
+    }
     const mimeType = file.type || 'application/octet-stream'
     const created = this.newEntry(file.name, parent.id, false, mimeType)
     // jsdom's File has no text(), and no attachment test needs the bytes.
@@ -148,6 +155,15 @@ export class FakeStore implements TodoStore {
     this.failingUploads = n
   }
 
+  /** Holds the next upload open until the returned function is called. */
+  holdNextUpload(): () => void {
+    let release!: () => void
+    this.uploadGate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    return release
+  }
+
   async listFiles(parent: FileRef): Promise<DriveEntry[]> {
     return this.live()
       .filter((entry) => entry.parent === parent.id)
@@ -155,8 +171,17 @@ export class FakeStore implements TodoStore {
   }
 
   async trashFile(id: string): Promise<void> {
+    if (this.failingTrash) {
+      this.failingTrash = false
+      throw new Error(`simulated trash failure for ${id}`)
+    }
     const entry = this.files.get(id)
     if (entry) entry.trashed = true
+  }
+
+  /** Makes the next trashFile throw. */
+  failNextTrash(): void {
+    this.failingTrash = true
   }
 
   isTrashed(id: string): boolean {

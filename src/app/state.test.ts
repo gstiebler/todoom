@@ -285,20 +285,73 @@ describe('attachments', () => {
     await app.detachFile(0, id)
     expect(app.state.tasks[0]?.attachments).toEqual([])
     expect(store.isTrashed(id)).toBe(true)
-  })
-
-  it('an upload failure lands in state.error and leaves the line alone', async () => {
-    const { app, store } = await setup()
-    store.failNextUploads(1)
-    await app.attachFiles(0, [upload('spec.pdf')])
-    expect(app.state.error).toContain('spec.pdf')
-    expect(app.state.tasks[0]?.attachments).toEqual([])
+    expect(app.pendingFor(0)).toEqual([])
   })
 
   it('uploadFiles returns one id per file', async () => {
     const { app } = await setup()
     const ids = await app.uploadFiles([upload('a.txt'), upload('b.txt')])
     expect(ids).toHaveLength(2)
+  })
+
+  it('shows a pending entry while the upload runs and drops it after', async () => {
+    const { app, store } = await setup()
+    const release = store.holdNextUpload()
+    const done = app.attachFiles(0, [upload('spec.pdf')])
+    await waitFor(() => expect(app.pendingFor(0)).toHaveLength(1))
+    expect(app.pendingFor(0)[0]).toMatchObject({ kind: 'upload', name: 'spec.pdf', error: null })
+    release()
+    await done
+    expect(app.pendingFor(0)).toEqual([])
+    expect(app.state.tasks[0]?.attachments).toHaveLength(1)
+  })
+
+  it('a failed upload keeps its entry with the message and leaves the line alone', async () => {
+    const { app, store } = await setup()
+    store.failNextUploads(1)
+    await app.attachFiles(0, [upload('spec.pdf'), upload('more.pdf')])
+    const pending = app.pendingFor(0)
+    expect(pending).toHaveLength(1)
+    expect(pending[0]?.error).toContain('spec.pdf')
+    expect(app.state.tasks[0]?.attachments).toEqual([])
+    expect(app.state.error).toBeNull()
+  })
+
+  it('retrying a failed upload succeeds and clears the entry', async () => {
+    const { app, store } = await setup()
+    store.failNextUploads(1)
+    await app.attachFiles(0, [upload('spec.pdf')])
+    const taskId = app.state.tasks[0]?.pairs['id'] as string
+    const key = app.pendingFor(0)[0]?.key as string
+    await app.retryAttachment(taskId, key)
+    expect(app.pendingFor(0)).toEqual([])
+    expect(app.state.tasks[0]?.attachments).toHaveLength(1)
+  })
+
+  it('a failed removal keeps the file word and reports on the entry', async () => {
+    const { app, store } = await setup()
+    await app.attachFiles(0, [upload('spec.pdf')])
+    const id = app.state.tasks[0]?.attachments[0] as string
+    store.failNextTrash()
+    await app.detachFile(0, id)
+    expect(app.state.tasks[0]?.attachments).toEqual([id])
+    expect(app.pendingFor(0)[0]).toMatchObject({ kind: 'remove', key: id, id })
+    expect(app.pendingFor(0)[0]?.error).toContain(id)
+    expect(app.state.error).toBeNull()
+  })
+
+  it('dismissing drops the entry', async () => {
+    const { app, store } = await setup()
+    store.failNextUploads(1)
+    await app.attachFiles(0, [upload('spec.pdf')])
+    const taskId = app.state.tasks[0]?.pairs['id'] as string
+    app.dismissAttachment(taskId, app.pendingFor(0)[0]?.key as string)
+    expect(app.pendingFor(0)).toEqual([])
+  })
+
+  it('has nothing pending for a task without an id', async () => {
+    const { app } = await setup()
+    expect(app.pendingFor(0)).toEqual([])
   })
 })
 

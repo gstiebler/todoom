@@ -19,6 +19,18 @@ import { chromeModel } from './languageModel'
 
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
+export type PendingKind = 'upload' | 'remove'
+
+/** One attachment operation that is running or has failed, shown on its task's row. */
+export interface PendingAttachment {
+  key: string
+  kind: PendingKind
+  name: string
+  error: string | null
+  file?: File
+  id?: string
+}
+
 function isErrorState(state: AppState): boolean {
   return state.saveState === 'error'
 }
@@ -42,6 +54,8 @@ export interface AppState {
   filter: Filter
   saveState: SaveState
   error: string | null
+  /** Attachment operations in flight or failed, keyed by the task's `id:` word. */
+  pending: Map<string, PendingAttachment[]>
   loadedModifiedTime: string | null
   /** Whether the on-device model can be used; 'unknown' until Chrome answers. */
   model: Availability | 'unknown'
@@ -58,6 +72,7 @@ export class TodoomApp {
     filter: emptyFilter(),
     saveState: 'idle',
     error: null,
+    pending: new Map(),
     loadedModifiedTime: null,
     model: 'unknown',
     modelProgress: null,
@@ -68,6 +83,7 @@ export class TodoomApp {
 
   private workspace: Workspace | null = null
   private revision = 0
+  private pendingCount = 0
   // The last search that parsed, so a half-typed query never empties the list.
   private validSearch = ''
   private session: ModelSession | null = null
@@ -132,48 +148,131 @@ export class TodoomApp {
     return entries.map((entry) => entry.id)
   }
 
-  /**
-   * Uploads first and edits the line only once every file has an id, so a
-   * half-failed batch leaves no reference to a file that isn't there.
-   */
+  /** Uploads the files one at a time, each landing on the line as soon as it has an id. */
   async attachFiles(index: number, files: File[]): Promise<void> {
-    if (!this.state.tasks[index]) return
-    try {
-      const ids = await this.uploadFiles(files)
+    const task = this.state.tasks[index]
+    if (!task) return
+    const taskId = this.identify(index)
+    const entries = files.map((file): PendingAttachment => {
+      this.pendingCount += 1
+      return { key: `${file.name}#${this.pendingCount}`, kind: 'upload', name: file.name, error: null, file }
+    })
+    runInAction(() => {
+      this.state.pending.set(taskId, [...this.pendingFor(index), ...entries])
+    })
+    for (const [i, entry] of entries.entries()) {
+      if (await this.attempt(taskId, entry.key, () => this.upload(taskId, entry.key))) continue
+      // The rest never started; they come back only if the user picks them again.
       runInAction(() => {
-        const task = this.state.tasks[index]
-        if (!task) return
-        this.state.tasks[index] = ids.reduce(addAttachment, task)
-        this.markDirty()
+        for (const rest of entries.slice(i + 1)) this.dismissAttachment(taskId, rest.key)
       })
-    } catch (error) {
-      runInAction(() => {
-        this.state.error = error instanceof Error ? error.message : String(error)
-      })
-      return
+      break
     }
     await this.save()
   }
 
-  /** Drops the id from the line and moves the Drive file to the trash. */
+  /** Trashes the Drive file and drops its id from the line once that worked. */
   async detachFile(index: number, id: string): Promise<void> {
-    const task = this.state.tasks[index]
-    if (!task) return
+    if (!this.state.tasks[index]) return
+    const taskId = this.identify(index)
+    const name = this.attachmentsById.get(id)?.name ?? id
     runInAction(() => {
-      this.state.tasks[index] = removeAttachment(task, id)
-      this.markDirty()
+      const entry: PendingAttachment = { key: id, kind: 'remove', name, error: null, id }
+      this.state.pending.set(taskId, [...this.pendingFor(index), entry])
     })
+    await this.attempt(taskId, id, () => this.remove(taskId, id))
+    await this.save()
+  }
+
+  /** Runs the failed operation again with the same file or id. */
+  async retryAttachment(taskId: string, key: string): Promise<void> {
+    const entry = this.findPending(taskId, key)
+    if (!entry) return
+    runInAction(() => {
+      entry.error = null
+    })
+    const run = entry.file
+      ? () => this.upload(taskId, key)
+      : entry.id
+        ? () => this.remove(taskId, key)
+        : null
+    if (!run) return
+    await this.attempt(taskId, key, run)
+    await this.save()
+  }
+
+  dismissAttachment(taskId: string, key: string): void {
+    const rest = (this.state.pending.get(taskId) ?? []).filter((entry) => entry.key !== key)
+    if (rest.length === 0) this.state.pending.delete(taskId)
+    else this.state.pending.set(taskId, rest)
+  }
+
+  pendingFor(index: number): PendingAttachment[] {
+    const id = this.state.tasks[index]?.pairs['id']
+    return id ? (this.state.pending.get(id) ?? []) : []
+  }
+
+  /** Gives the task an id: word so its pending operations have something to hang off. */
+  private identify(index: number): string {
+    const task = this.state.tasks[index]!
+    const withId = ensureId(task)
+    if (withId !== task) {
+      this.state.tasks[index] = withId
+      this.markDirty()
+    }
+    return withId.pairs['id']!
+  }
+
+  private findPending(taskId: string, key: string): PendingAttachment | undefined {
+    return this.state.pending.get(taskId)?.find((entry) => entry.key === key)
+  }
+
+  private indexById(taskId: string): number {
+    return this.state.tasks.findIndex((task) => task.pairs['id'] === taskId)
+  }
+
+  /** The one place an attachment rejection becomes a row on screen. */
+  private async attempt(taskId: string, key: string, run: () => Promise<void>): Promise<boolean> {
     try {
-      await this.store.trashFile(id)
-      runInAction(() => {
-        this.attachmentsById.delete(id)
-      })
+      await run()
+      return true
     } catch (error) {
       runInAction(() => {
-        this.state.error = error instanceof Error ? error.message : String(error)
+        const entry = this.findPending(taskId, key)
+        if (entry) entry.error = error instanceof Error ? error.message : String(error)
       })
+      return false
     }
-    await this.save()
+  }
+
+  private async upload(taskId: string, key: string): Promise<void> {
+    const file = this.findPending(taskId, key)?.file
+    if (!file) return
+    const uploaded = await this.store.uploadFile(this.attachmentsFolder, file)
+    runInAction(() => {
+      this.attachmentsById.set(uploaded.id, uploaded)
+      const index = this.indexById(taskId)
+      const task = this.state.tasks[index]
+      if (task) {
+        this.state.tasks[index] = addAttachment(task, uploaded.id)
+        this.markDirty()
+      }
+      this.dismissAttachment(taskId, key)
+    })
+  }
+
+  private async remove(taskId: string, id: string): Promise<void> {
+    await this.store.trashFile(id)
+    runInAction(() => {
+      this.attachmentsById.delete(id)
+      const index = this.indexById(taskId)
+      const task = this.state.tasks[index]
+      if (task) {
+        this.state.tasks[index] = removeAttachment(task, id)
+        this.markDirty()
+      }
+      this.dismissAttachment(taskId, id)
+    })
   }
 
   /** The Todoom/attachments folder every uploaded file lands in. */

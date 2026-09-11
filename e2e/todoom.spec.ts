@@ -67,13 +67,22 @@ test('archives completed tasks', async ({ page }) => {
   await expect(page.locator('.task')).toHaveCount(1)
 })
 
-test('attaches a file to a task', async ({ page }) => {
+test('attaches a file to a task and previews an image', async ({ page }) => {
   await page.goto(PAGE)
   const row = page.locator('.task', { hasText: 'Buy milk' })
   await row.locator('.task__attach').click()
   await page.setInputFiles('.attachment__picker', 'e2e/files/recipe.txt')
   await expect(page.locator('.attachment')).toHaveText(/recipe.txt/)
   await expect(row.locator('.task__attach')).toHaveText('1')
+
+  await page.setInputFiles('.attachment__picker', 'e2e/files/pixel.png')
+  await page.locator('.attachment__preview', { hasText: 'pixel.png' }).click()
+  await expect(page.locator('.preview__frame')).toHaveAttribute(
+    'src',
+    /https:\/\/drive\.google\.com\/file\/d\/.+\/preview/,
+  )
+  await page.locator('.preview__close').click()
+  await expect(page.locator('.preview')).toHaveCount(0)
 })
 
 test('makes a task wait on another', async ({ page }) => {

@@ -325,9 +325,9 @@ describe('attachments', () => {
     await act(async () => {
       mounted.app.attachmentsById.set('known', {
         id: 'known',
-        name: 'spec.pdf',
+        name: 'notes.txt',
         webViewLink: 'https://drive.example/known',
-        mimeType: 'application/pdf',
+        mimeType: 'text/plain',
       })
     })
     return mounted
@@ -341,7 +341,7 @@ describe('attachments', () => {
   it('opens the popover with the file names', async () => {
     const { root } = await withAttachments()
     fireEvent.click(root.querySelector('.task__attach')!)
-    expect(root.querySelector('.popover--attachments')?.textContent).toContain('spec.pdf')
+    expect(root.querySelector('.popover--attachments')?.textContent).toContain('notes.txt')
   })
 
   it('links an attachment to its Drive page in a new tab', async () => {
@@ -366,6 +366,59 @@ describe('attachments', () => {
     fireEvent.click(root.querySelector('.task__attach')!)
     fireEvent.keyDown(root.querySelector('.popover--attachments')!, { key: 'Escape' })
     expect(root.querySelector('.popover--attachments')).toBeNull()
+  })
+
+  async function withPreviewable() {
+    const mounted = await mount('Buy milk file:img file:zip\n')
+    await act(async () => {
+      mounted.app.attachmentsById.set('img', {
+        id: 'img',
+        name: 'photo.png',
+        webViewLink: 'https://drive.example/img',
+        mimeType: 'image/png',
+      })
+      mounted.app.attachmentsById.set('zip', {
+        id: 'zip',
+        name: 'bundle.zip',
+        webViewLink: 'https://drive.example/zip',
+        mimeType: 'application/zip',
+      })
+    })
+    fireEvent.click(mounted.root.querySelector('.task__attach')!)
+    return mounted
+  }
+
+  it('offers a preview button for images and a link for other files', async () => {
+    const { root } = await withPreviewable()
+    expect(root.querySelector('.attachment__preview')?.textContent).toBe('photo.png')
+    expect(root.querySelector('.attachment__link')?.textContent).toBe('bundle.zip')
+  })
+
+  it('opens the Drive preview in a modal and closes it on Escape', async () => {
+    const { root } = await withPreviewable()
+    fireEvent.click(root.querySelector('.attachment__preview')!)
+    const frame = root.querySelector<HTMLIFrameElement>('.preview__frame')
+    expect(frame?.getAttribute('src')).toBe('https://drive.google.com/file/d/img/preview')
+    expect(root.querySelector('.preview__title')?.textContent).toBe('photo.png')
+    expect(root.querySelector<HTMLAnchorElement>('.preview__open')?.href).toBe(
+      'https://drive.example/img',
+    )
+    expect(root.querySelector('.preview__loading')).not.toBeNull()
+    fireEvent.load(frame!)
+    expect(root.querySelector('.preview__loading')).toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(root.querySelector('.preview')).toBeNull()
+    expect(root.querySelector('.popover--attachments')).not.toBeNull()
+  })
+
+  it('closes the preview from its button and its backdrop', async () => {
+    const { root } = await withPreviewable()
+    fireEvent.click(root.querySelector('.attachment__preview')!)
+    fireEvent.click(root.querySelector('.preview__close')!)
+    expect(root.querySelector('.preview')).toBeNull()
+    fireEvent.click(root.querySelector('.attachment__preview')!)
+    fireEvent.click(root.querySelector('.preview')!.parentElement!)
+    expect(root.querySelector('.preview')).toBeNull()
   })
 })
 

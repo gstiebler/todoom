@@ -3,10 +3,6 @@
 Planned features, not yet designed. Each entry is a sketch of intent, not a
 spec: brainstorm one before building it.
 
-## Attachment preview
-
-Show a preview of an attachment (image, PDF, text) without leaving the app.
-
 ## Attachment loader
 
 Show progress while an attachment uploads or downloads, and let the user

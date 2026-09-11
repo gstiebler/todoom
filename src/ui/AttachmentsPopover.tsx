@@ -1,6 +1,8 @@
 import { observer } from 'mobx-react-lite'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { TodoomApp } from '../app/state'
+import type { DriveEntry } from '../drive/store'
+import { isPreviewable, PreviewModal } from './PreviewModal'
 
 /**
  * The files hanging off one task. A file the folder no longer holds still
@@ -16,6 +18,7 @@ export const AttachmentList = observer(function AttachmentList({
   ids: string[]
 }) {
   const picker = useRef<HTMLInputElement>(null)
+  const [preview, setPreview] = useState<DriveEntry | null>(null)
 
   const detach = (id: string, name: string) => {
     if (!confirm(`Move ${name} to the Drive trash?`)) return
@@ -30,7 +33,15 @@ export const AttachmentList = observer(function AttachmentList({
           const entry = app.attachmentsById.get(id)
           return (
             <li className="attachment" key={id}>
-              {entry ? (
+              {entry && isPreviewable(entry) ? (
+                <button
+                  className="attachment__preview"
+                  type="button"
+                  onClick={() => setPreview(entry)}
+                >
+                  {entry.name}
+                </button>
+              ) : entry ? (
                 <a
                   className="attachment__link"
                   href={entry.webViewLink}
@@ -71,6 +82,7 @@ export const AttachmentList = observer(function AttachmentList({
           event.target.value = ''
         }}
       />
+      {preview && <PreviewModal entry={preview} onClose={() => setPreview(null)} />}
     </>
   )
 })

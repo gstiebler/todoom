@@ -6,7 +6,11 @@ import { t, type Locale } from './i18n'
 type Urgency = 'overdue' | 'today' | 'soon' | ''
 
 /** How a date reads and how pressing it is, relative to today. */
-function describeDate(iso: string, today: string, locale: Locale): { label: string; urgency: Urgency } {
+function describeDate(
+  iso: string,
+  today: string,
+  locale: Locale,
+): { label: string; urgency: Urgency } {
   const delta = daysBetween(today, iso)
   if (delta < 0) return { label: shortDate(locale, iso, today), urgency: 'overdue' }
   if (delta === 0) return { label: t(locale, 'date.today'), urgency: 'today' }

@@ -16,8 +16,16 @@ export function quickDates(today: string, locale: Locale): QuickDate[] {
   return [
     { key: 'today', label: t(locale, 'date.today'), date: today },
     { key: 'tomorrow', label: t(locale, 'date.tomorrow'), date: addInterval(today, 1, 'd') },
-    { key: 'weekend', label: t(locale, 'quick.weekend'), date: addInterval(today, toSaturday, 'd') },
-    { key: 'next-week', label: t(locale, 'quick.nextWeek'), date: addInterval(today, toMonday, 'd') },
+    {
+      key: 'weekend',
+      label: t(locale, 'quick.weekend'),
+      date: addInterval(today, toSaturday, 'd'),
+    },
+    {
+      key: 'next-week',
+      label: t(locale, 'quick.nextWeek'),
+      date: addInterval(today, toMonday, 'd'),
+    },
   ]
 }
 

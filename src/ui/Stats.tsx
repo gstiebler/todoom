@@ -50,7 +50,15 @@ function Bars({
 }
 
 /** The GitHub grid: a column per week, a row per weekday, ending this week. */
-function Streak({ byDay, today, locale }: { byDay: Map<string, number>; today: string; locale: Locale }) {
+function Streak({
+  byDay,
+  today,
+  locale,
+}: {
+  byDay: Map<string, number>
+  today: string
+  locale: Locale
+}) {
   const lastMonday = mondayOf(today)
   const firstMonday = addInterval(lastMonday, -(GRID_WEEKS - 1), 'w')
   const max = Math.max(0, ...byDay.values())
@@ -75,11 +83,13 @@ function Streak({ byDay, today, locale }: { byDay: Map<string, number>; today: s
             const date = addInterval(monday, d, 'd')
             const count = byDay.get(date) ?? 0
             const future = date > today
+            const level = future ? 'future' : streakLevel(count, max)
+            const title = `${shortDate(locale, date, today)}: ${count.toLocaleString(locale)}`
             return (
               <span
                 key={date}
-                className={`streak__day streak__day--${future ? 'future' : streakLevel(count, max)}`}
-                title={future ? '' : `${shortDate(locale, date, today)}: ${count.toLocaleString(locale)}`}
+                className={`streak__day streak__day--${level}`}
+                title={future ? '' : title}
               />
             )
           }),

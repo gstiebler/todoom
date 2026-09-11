@@ -6,6 +6,8 @@ import {
   collectProjects,
   collectContexts,
   collectPriorities,
+  countByProject,
+  countByContext,
 } from './query'
 import { parseFile } from './parse'
 import { formatTask } from './format'
@@ -34,6 +36,22 @@ describe('collectors', () => {
 
   it('collects sorted unique priorities', () => {
     expect(collectPriorities(sample)).toEqual(['A', 'B'])
+  })
+
+  it('counts open tasks per project, keeping labels only completed tasks carry', () => {
+    const tasks = parseFile('a +house\nb +house\nx 2026-09-09 c +house\nx 2026-09-09 d +old\n')
+    expect([...countByProject(tasks)]).toEqual([
+      ['house', 2],
+      ['old', 0],
+    ])
+  })
+
+  it('counts open tasks per context', () => {
+    const tasks = parseFile('a @phone @home\nx 2026-09-09 b @phone\n')
+    expect([...countByContext(tasks)]).toEqual([
+      ['home', 1],
+      ['phone', 1],
+    ])
   })
 })
 

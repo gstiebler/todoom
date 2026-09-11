@@ -40,6 +40,24 @@ export function collectPriorities(tasks: Task[]): string[] {
   return unique(tasks.map((t) => t.priority).filter((p): p is string => p !== undefined))
 }
 
+function countBy(tasks: Task[], labelsOf: (task: Task) => string[]): Map<string, number> {
+  const counts = new Map(unique(tasks.flatMap(labelsOf)).map((label) => [label, 0]))
+  for (const task of tasks) {
+    if (task.completed) continue
+    for (const label of labelsOf(task)) counts.set(label, (counts.get(label) ?? 0) + 1)
+  }
+  return counts
+}
+
+/** Open-task counts keyed by label, for every label any task carries. */
+export function countByProject(tasks: Task[]): Map<string, number> {
+  return countBy(tasks, (task) => task.projects)
+}
+
+export function countByContext(tasks: Task[]): Map<string, number> {
+  return countBy(tasks, (task) => task.contexts)
+}
+
 function dueOf(task: Task): string | undefined {
   const due = task.pairs['due']
   return due && isValidDate(due) ? due : undefined

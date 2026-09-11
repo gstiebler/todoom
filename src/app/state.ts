@@ -10,6 +10,9 @@ import { nextOccurrence } from '../core/recurrence'
 import { emptyFilter, filterTasks, sortTasks } from '../core/query'
 import { splitCompleted } from '../core/archive'
 import { ensureId, setDependency } from '../core/deps'
+import { parseQuery } from '../core/filterQuery'
+import type { SavedFilter } from '../core/filters'
+import { formatFilters, parseFilters } from '../core/filters'
 
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
@@ -21,6 +24,8 @@ export interface AppState {
   tasks: Task[]
   /** What done.txt held the last time the Stats view asked; null until it does. */
   archived: Task[] | null
+  /** What filters.txt holds; null until the workspace has loaded. */
+  filters: SavedFilter[] | null
   page: 'tasks' | 'stats'
   filter: Filter
   saveState: SaveState
@@ -32,6 +37,7 @@ export class TodoomApp {
   readonly state: AppState = {
     tasks: [],
     archived: null,
+    filters: null,
     page: 'tasks',
     filter: emptyFilter(),
     saveState: 'idle',
@@ -44,6 +50,8 @@ export class TodoomApp {
 
   private workspace: Workspace | null = null
   private revision = 0
+  // The last search that parsed, so a half-typed query never empties the list.
+  private validSearch = ''
 
   constructor(
     private store: TodoStore,
@@ -153,6 +161,7 @@ export class TodoomApp {
       this.state.error = null
     })
     await this.loadAttachments()
+    if (this.state.filters === null) await this.loadFilters()
   }
 
   addTask(input: string): void {
@@ -224,10 +233,22 @@ export class TodoomApp {
 
   setFilter(patch: Partial<Filter>): void {
     this.state.filter = { ...this.state.filter, ...patch }
+    if (this.queryError === null) this.validSearch = this.state.filter.search
+  }
+
+  /** The message for the search box, or null when the query parses. */
+  get queryError(): string | null {
+    try {
+      parseQuery(this.state.filter.search)
+      return null
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error)
+    }
   }
 
   visibleTasks(): Task[] {
-    return sortTasks(filterTasks(this.state.tasks, this.state.filter, this.today()))
+    const filter = { ...this.state.filter, search: this.validSearch }
+    return sortTasks(filterTasks(this.state.tasks, filter, this.today()))
   }
 
   indexOf(task: Task): number {
@@ -282,6 +303,35 @@ export class TodoomApp {
     runInAction(() => {
       this.state.archived = parseFile(text)
     })
+  }
+
+  async loadFilters(): Promise<void> {
+    const ref = await this.store.findOrCreateFileIn(this.folder, 'filters.txt')
+    const { text } = await this.store.read(ref)
+    runInAction(() => {
+      this.state.filters = parseFilters(text)
+    })
+  }
+
+  private async writeFilters(filters: SavedFilter[]): Promise<void> {
+    const ref = await this.store.findOrCreateFileIn(this.folder, 'filters.txt')
+    await this.store.write(ref, formatFilters(filters))
+    runInAction(() => {
+      this.state.filters = filters
+    })
+  }
+
+  /** Adds the filter, or replaces the one already saved under that name. */
+  async saveFilter(name: string, query: string): Promise<void> {
+    const current = this.state.filters ?? []
+    const next = current.some((filter) => filter.name === name)
+      ? current.map((filter) => (filter.name === name ? { name, query } : filter))
+      : [...current, { name, query }]
+    await this.writeFilters(next)
+  }
+
+  async deleteFilter(name: string): Promise<void> {
+    await this.writeFilters((this.state.filters ?? []).filter((filter) => filter.name !== name))
   }
 
   async archive(): Promise<number> {

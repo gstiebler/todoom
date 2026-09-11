@@ -325,3 +325,49 @@ describe('loadHistory', () => {
     expect(app.state.archived).toEqual([])
   })
 })
+
+describe('query errors', () => {
+  it('reports the parse error and keeps the last good result', async () => {
+    const { app } = await setup('a +house\nb +work\n')
+    app.setFilter({ search: '+house' })
+    expect(app.queryError).toBeNull()
+    expect(app.visibleTasks().map((t) => t.description)).toEqual(['a +house'])
+    app.setFilter({ search: '+house | (' })
+    expect(app.queryError).toBe('Missing a term at the end')
+    expect(app.visibleTasks().map((t) => t.description)).toEqual(['a +house'])
+    app.setFilter({ search: '' })
+    expect(app.queryError).toBeNull()
+    expect(app.visibleTasks()).toHaveLength(2)
+  })
+})
+
+describe('saved filters', () => {
+  it('loads filters.txt with the workspace', async () => {
+    const store = new FakeStore({ 'todo.txt': 'a\n', 'filters.txt': 'Home: +home\n' })
+    await store.signIn()
+    const app = new TodoomApp(store, () => TODAY)
+    await app.load(await store.workspace())
+    expect(app.state.filters).toEqual([{ name: 'Home', query: '+home' }])
+  })
+
+  it('is empty when there is no filters.txt yet', async () => {
+    const { app } = await setup()
+    expect(app.state.filters).toEqual([])
+  })
+
+  it('saves, replaces and deletes filters in file order', async () => {
+    const { app, store } = await setup()
+    await app.saveFilter('Home', '+home')
+    await app.saveFilter('Calls', '@phone')
+    await app.saveFilter('Home', '+home & !done')
+    expect(app.state.filters).toEqual([
+      { name: 'Home', query: '+home & !done' },
+      { name: 'Calls', query: '@phone' },
+    ])
+    const file = (await store.findOrCreateFileIn(app.folder, 'filters.txt'))
+    expect((await store.read(file)).text).toBe('Home: +home & !done\nCalls: @phone\n')
+    await app.deleteFilter('Home')
+    expect(app.state.filters).toEqual([{ name: 'Calls', query: '@phone' }])
+    expect((await store.read(file)).text).toBe('Calls: @phone\n')
+  })
+})

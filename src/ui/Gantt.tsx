@@ -4,7 +4,8 @@ import type { TodoomApp } from '../app/state'
 import { addInterval, weekday } from '../core/dates'
 import { dayIndex, ganttArrows, ganttRange, ganttRows, type GanttRow } from '../core/gantt'
 import { taskTitle } from '../core/title'
-import { MONTH_NAMES } from './quickDates'
+import { monthYear } from './formatDate'
+import { useLocale } from './locale'
 import { TaskModal } from './TaskModal'
 
 const DAY = 28
@@ -13,6 +14,7 @@ const HEADER = 24
 const BAR_INSET = 7
 
 export const Gantt = observer(function Gantt({ app, today }: { app: TodoomApp; today: string }) {
+  const { locale, t } = useLocale()
   const { tasks } = app.state
   const [open, setOpen] = useState<number | null>(null)
   const rows = ganttRows(app.visibleTasks(), today)
@@ -28,7 +30,7 @@ export const Gantt = observer(function Gantt({ app, today }: { app: TodoomApp; t
   return (
     <div className="gantt">
       {rows.length === 0 && (
-        <p className="gantt__empty">Give a task a due date or a deadline to see it here.</p>
+        <p className="gantt__empty">{t('gantt.empty')}</p>
       )}
       {rows.length > 0 && (
         <>
@@ -77,7 +79,7 @@ export const Gantt = observer(function Gantt({ app, today }: { app: TodoomApp; t
               {days.map((day, i) =>
                 day.endsWith('-01') || i === 0 ? (
                   <text key={day} className="gantt__month" x={i * DAY + 4} y={16}>
-                    {`${MONTH_NAMES[Number(day.slice(5, 7)) - 1]} ${day.slice(0, 4)}`}
+                    {monthYear(locale, day, 'short')}
                   </text>
                 ) : null,
               )}

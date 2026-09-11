@@ -7,6 +7,7 @@ import { AttachmentsPopover } from './AttachmentsPopover'
 import { TaskModal } from './TaskModal'
 import { taskTitle } from '../core/title'
 import { blockerOf } from '../core/deps'
+import { useLocale } from './locale'
 import { CalendarIcon, FlagIcon, PaperclipIcon, RepeatIcon, TagIcon } from './icons'
 
 function Tag({ label, kind }: { label: string; kind: 'project' | 'context' }) {
@@ -27,10 +28,11 @@ export const TaskRow = observer(function TaskRow({
   task: Task
   today: string
 }) {
+  const { locale } = useLocale()
   const [open, setOpen] = useState(false)
   const [attachOpen, setAttachOpen] = useState(false)
   const index = app.indexOf(task)
-  const { classes, dueLabel, deadlineLabel, deadlineClass } = describeTask(task, today)
+  const { classes, dueLabel, deadlineLabel, deadlineClass } = describeTask(task, today, locale)
   const rec = task.pairs['rec']
   const blocker = blockerOf(task, app.state.tasks)
   if (blocker) classes.push('task--blocked')

@@ -1,4 +1,6 @@
 import { addInterval, weekday } from '../core/dates'
+import { monthYear } from './formatDate'
+import { t, type Locale } from './i18n'
 
 export interface QuickDate {
   key: string
@@ -8,21 +10,16 @@ export interface QuickDate {
 
 // The four shortcuts the date popover offers, resolved against the day the
 // popover is open on.
-export function quickDates(today: string): QuickDate[] {
+export function quickDates(today: string, locale: Locale): QuickDate[] {
   const toSaturday = (5 - weekday(today) + 7) % 7
   const toMonday = 7 - weekday(today)
   return [
-    { key: 'today', label: 'Today', date: today },
-    { key: 'tomorrow', label: 'Tomorrow', date: addInterval(today, 1, 'd') },
-    { key: 'weekend', label: 'This weekend', date: addInterval(today, toSaturday, 'd') },
-    { key: 'next-week', label: 'Next week', date: addInterval(today, toMonday, 'd') },
+    { key: 'today', label: t(locale, 'date.today'), date: today },
+    { key: 'tomorrow', label: t(locale, 'date.tomorrow'), date: addInterval(today, 1, 'd') },
+    { key: 'weekend', label: t(locale, 'quick.weekend'), date: addInterval(today, toSaturday, 'd') },
+    { key: 'next-week', label: t(locale, 'quick.nextWeek'), date: addInterval(today, toMonday, 'd') },
   ]
 }
-
-export const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-
-// Monday-first, matching weekday() in core/dates.
-export const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 export interface MonthGrid {
   year: number
@@ -32,12 +29,7 @@ export interface MonthGrid {
   cells: Array<string | null>
 }
 
-export const MONTH_NAMES = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-]
-
-export function monthGrid(year: number, month: number): MonthGrid {
+export function monthGrid(year: number, month: number, locale: Locale): MonthGrid {
   const pad = (n: number) => String(n).padStart(2, '0')
   const first = `${year}-${pad(month)}-01`
   const days = new Date(Date.UTC(year, month, 0)).getUTCDate()
@@ -45,7 +37,7 @@ export function monthGrid(year: number, month: number): MonthGrid {
   const cells: Array<string | null> = Array<string | null>(weekday(first)).fill(null)
   for (let day = 1; day <= days; day += 1) cells.push(`${year}-${pad(month)}-${pad(day)}`)
 
-  return { year, month, title: `${MONTH_NAMES[month - 1]} ${year}`, cells }
+  return { year, month, title: monthYear(locale, first, 'long'), cells }
 }
 
 export function shiftMonth(year: number, month: number, delta: number): [number, number] {

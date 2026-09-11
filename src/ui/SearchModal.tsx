@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import type { TodoomApp } from '../app/state'
 import { taskTitle } from '../core/title'
 import { describeTask } from './describeTask'
+import { useLocale } from './locale'
 
 const PREVIEW_ROWS = 8
 
@@ -17,6 +18,7 @@ export const SearchModal = observer(function SearchModal({
   onClose: () => void
   onPick: (index: number) => void
 }) {
+  const { locale } = useLocale()
   const input = useRef<HTMLInputElement>(null)
   // The query the modal opened with, so Escape can put it back.
   const initial = useRef(app.state.filter.search)
@@ -66,7 +68,7 @@ export const SearchModal = observer(function SearchModal({
         {queryError && <p className="query-error">{queryError}</p>}
         <ul className="search-modal__results">
           {preview.map((task) => {
-            const { dueLabel } = describeTask(task, today)
+            const { dueLabel } = describeTask(task, today, locale)
             return (
               <li key={app.indexOf(task)}>
                 <button

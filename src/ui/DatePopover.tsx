@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { monthGrid, quickDates, shiftMonth, WEEKDAY_INITIALS } from './quickDates'
+import { monthGrid, quickDates, shiftMonth } from './quickDates'
+import { weekdayInitials, weekdayShort } from './formatDate'
+import { useLocale } from './locale'
 
-const REPEATS: Array<[string, string]> = [
-  ['1d', 'Daily'],
-  ['1w', 'Weekly'],
-  ['1m', 'Monthly'],
-  ['1y', 'Yearly'],
+const REPEATS: Array<[string, 'daily' | 'weekly' | 'monthly' | 'yearly']> = [
+  ['1d', 'daily'],
+  ['1w', 'weekly'],
+  ['1m', 'monthly'],
+  ['1y', 'yearly'],
 ]
-
-const WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 // todo.txt has no representation for a time of day, so the reference design's
 // "Time" button has nothing to write and is left out.
@@ -28,16 +28,17 @@ export function DatePopover({
   /** A deadline is a date without a repeat row. */
   withRepeat?: boolean
 }) {
+  const { locale, t } = useLocale()
   const [[year, month], setMonth] = useState<[number, number]>(() => [
     Number(today.slice(0, 4)),
     Number(today.slice(5, 7)),
   ])
-  const grid = monthGrid(year, month)
+  const grid = monthGrid(year, month, locale)
 
   return (
     <div className="popover popover--date">
       <ul className="quick-dates">
-        {quickDates(today).map((quick) => (
+        {quickDates(today, locale).map((quick) => (
           <li key={quick.key}>
             <button
               type="button"
@@ -45,9 +46,7 @@ export function DatePopover({
               onClick={() => onDue(quick.date)}
             >
               <span>{quick.label}</span>
-              <span className="quick-date__day">
-                {WEEKDAY_NAMES[(new Date(`${quick.date}T00:00:00Z`).getUTCDay() + 6) % 7]}
-              </span>
+              <span className="quick-date__day">{weekdayShort(locale, quick.date)}</span>
             </button>
           </li>
         ))}
@@ -59,14 +58,14 @@ export function DatePopover({
           <span>
             <button
               type="button"
-              aria-label="Previous month"
+              aria-label={t('date.previousMonth')}
               onClick={() => setMonth(shiftMonth(year, month, -1))}
             >
               ‹
             </button>
             <button
               type="button"
-              aria-label="Next month"
+              aria-label={t('date.nextMonth')}
               onClick={() => setMonth(shiftMonth(year, month, 1))}
             >
               ›
@@ -74,7 +73,7 @@ export function DatePopover({
           </span>
         </div>
         <div className="calendar__grid">
-          {WEEKDAY_INITIALS.map((initial, i) => (
+          {weekdayInitials(locale).map((initial, i) => (
             <span key={i} className="calendar__weekday">
               {initial}
             </span>
@@ -105,14 +104,14 @@ export function DatePopover({
       <div className="popover__footer">
         {withRepeat && (
           <div className="repeats">
-            {REPEATS.map(([value, label]) => (
+            {REPEATS.map(([value, key]) => (
               <button
                 type="button"
                 key={value}
                 className={rec === value ? 'repeat repeat--active' : 'repeat'}
                 onClick={() => onRec(rec === value ? null : value)}
               >
-                {label}
+                {t(`date.repeat.${key}`)}
               </button>
             ))}
           </div>
@@ -125,7 +124,7 @@ export function DatePopover({
             onRec(null)
           }}
         >
-          Clear
+          {t('date.clear')}
         </button>
       </div>
     </div>

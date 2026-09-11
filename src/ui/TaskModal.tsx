@@ -11,6 +11,7 @@ import { DatePopover } from './DatePopover'
 import { LabelsPopover } from './LabelsPopover'
 import { DependencyPopover } from './DependencyPopover'
 import { blockerOf, wouldCycle } from '../core/deps'
+import { useLocale } from './locale'
 import { CalendarIcon, FlagIcon, RepeatIcon, TagIcon } from './icons'
 
 const PRIORITIES = ['A', 'B', 'C', 'D']
@@ -29,6 +30,7 @@ export const TaskModal = observer(function TaskModal({
   today: string
   onClose: () => void
 }) {
+  const { locale } = useLocale()
   const [field, setField] = useState<Field>(null)
   // The two text fields are edited locally and written back on blur, so a task
   // is not reparsed on every keystroke.
@@ -50,7 +52,7 @@ export const TaskModal = observer(function TaskModal({
   const index = app.indexOf(task)
   const change = (fn: (task: Task) => Task) => app.updateTask(index, fn)
   const toggle = (next: Field) => setField((current) => (current === next ? null : next))
-  const { dueLabel, deadlineLabel, deadlineClass } = describeTask(task, today)
+  const { dueLabel, deadlineLabel, deadlineClass } = describeTask(task, today, locale)
   const rec = task.pairs['rec']
   const labels = [...task.projects.map((p) => `+${p}`), ...task.contexts.map((c) => `@${c}`)]
   const available = [

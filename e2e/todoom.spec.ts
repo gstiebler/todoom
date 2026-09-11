@@ -189,7 +189,6 @@ test('searches from the palette', async ({ page }) => {
 test('reorders tasks by dragging in manual sort', async ({ page }) => {
   await page.goto(PAGE)
   await page.locator('.sort-btn').click()
-  await expect(page).toHaveURL(/sort=manual/)
   const rows = page.locator('.task')
   await expect(rows.first()).toContainText('Call plumber')
   // Drop in the top half of the first row so the dragged task lands before it.

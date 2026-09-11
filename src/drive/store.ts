@@ -8,6 +8,7 @@ export interface DriveEntry {
   id: string
   name: string
   webViewLink: string
+  mimeType: string
 }
 
 export interface ReadResult {

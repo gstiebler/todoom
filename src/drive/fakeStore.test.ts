@@ -121,6 +121,19 @@ describe('FakeStore folders and attachments', () => {
     expect((await store.read(entry)).text).toBe('eggs')
   })
 
+  it('remembers the type of an uploaded file', async () => {
+    const store = await signedIn()
+    const folder = await store.findOrCreateFolder('Todoom')
+    const png = await store.uploadFile(folder, new File(['x'], 'a.png', { type: 'image/png' }))
+    expect(png.mimeType).toBe('image/png')
+    const blob = await store.uploadFile(folder, new File(['x'], 'blob', { type: '' }))
+    expect(blob.mimeType).toBe('application/octet-stream')
+    expect((await store.listFiles(folder)).map((e) => e.mimeType)).toEqual([
+      'image/png',
+      'application/octet-stream',
+    ])
+  })
+
   it('hides a trashed file from listings', async () => {
     const store = await signedIn()
     const folder = await store.findOrCreateFolder('Todoom')

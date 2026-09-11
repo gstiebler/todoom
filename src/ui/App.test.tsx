@@ -327,6 +327,7 @@ describe('attachments', () => {
         id: 'known',
         name: 'spec.pdf',
         webViewLink: 'https://drive.example/known',
+        mimeType: 'application/pdf',
       })
     })
     return mounted

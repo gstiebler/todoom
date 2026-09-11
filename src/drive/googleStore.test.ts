@@ -174,13 +174,14 @@ describe('GoogleDriveStore attachments', () => {
   })
 
   it('returns the id, name and Drive link of the upload', async () => {
-    driveBodies({ id: 'up', name: 'notes.txt', webViewLink: 'https://drive/up' })
+    driveBodies({ id: 'up', name: 'notes.txt', webViewLink: 'https://drive/up', mimeType: 'text/plain' })
     const store = new GoogleDriveStore(tokenSource('tok'))
 
     expect(await store.uploadFile(folder, file())).toEqual({
       id: 'up',
       name: 'notes.txt',
       webViewLink: 'https://drive/up',
+      mimeType: 'text/plain',
     })
   })
 
@@ -194,14 +195,27 @@ describe('GoogleDriveStore attachments', () => {
 
   it('lists what is in the folder', async () => {
     const drive = driveBodies({
-      files: [{ id: 'a', name: 'one.txt', webViewLink: 'https://drive/a' }],
+      files: [{ id: 'a', name: 'one.txt', webViewLink: 'https://drive/a', mimeType: 'image/png' }],
     })
     const store = new GoogleDriveStore(tokenSource('tok'))
 
     expect(await store.listFiles(folder)).toEqual([
-      { id: 'a', name: 'one.txt', webViewLink: 'https://drive/a' },
+      { id: 'a', name: 'one.txt', webViewLink: 'https://drive/a', mimeType: 'image/png' },
     ])
     expect(decodeURIComponent(urlOf(drive, 0))).toContain("'fol' in parents")
+  })
+
+  it('asks Drive for the mime type', async () => {
+    const drive = driveBodies({ files: [] })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+    await store.listFiles(folder)
+    expect(urlOf(drive, 0)).toContain('mimeType')
+  })
+
+  it('falls back to an empty mime type when Drive omits it', async () => {
+    driveBodies({ files: [{ id: 'a', name: 'one.txt', webViewLink: 'https://drive/a' }] })
+    const store = new GoogleDriveStore(tokenSource('tok'))
+    expect((await store.listFiles(folder))[0]?.mimeType).toBe('')
   })
 
   it('trashes rather than deletes, so a mistake is recoverable', async () => {

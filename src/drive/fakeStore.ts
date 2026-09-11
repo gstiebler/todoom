@@ -8,10 +8,16 @@ interface Entry {
   parent: string
   isFolder: boolean
   trashed: boolean
+  mimeType: string
 }
 
 function entryOf(entry: Entry): DriveEntry {
-  return { id: entry.id, name: entry.name, webViewLink: `https://drive.fake/${entry.id}` }
+  return {
+    id: entry.id,
+    name: entry.name,
+    webViewLink: `https://drive.fake/${entry.id}`,
+    mimeType: entry.mimeType,
+  }
 }
 
 export class FakeStore implements TodoStore {
@@ -36,7 +42,12 @@ export class FakeStore implements TodoStore {
     return new Date(1_700_000_000_000 + this.clock).toISOString()
   }
 
-  private newEntry(name: string, parent = 'root', isFolder = false): Entry {
+  private newEntry(
+    name: string,
+    parent = 'root',
+    isFolder = false,
+    mimeType = isFolder ? 'application/vnd.google-apps.folder' : 'text/plain',
+  ): Entry {
     this.counter += 1
     return {
       id: `fake-${this.counter}`,
@@ -46,6 +57,7 @@ export class FakeStore implements TodoStore {
       parent,
       isFolder,
       trashed: false,
+      mimeType,
     }
   }
 
@@ -123,7 +135,7 @@ export class FakeStore implements TodoStore {
       this.failingUploads -= 1
       throw new Error(`simulated upload failure for ${file.name}`)
     }
-    const created = this.newEntry(file.name, parent.id)
+    const created = this.newEntry(file.name, parent.id, false, file.type || 'application/octet-stream')
     // jsdom's File has no text(), and no attachment test needs the bytes.
     if (typeof file.text === 'function') created.text = await file.text()
     this.files.set(created.id, created)

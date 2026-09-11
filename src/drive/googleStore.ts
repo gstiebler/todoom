@@ -4,7 +4,7 @@ import { backendTokens, SignedOutError, type TokenSource } from './tokens'
 const FILES = 'https://www.googleapis.com/drive/v3/files'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
 const FOLDER_MIME = 'application/vnd.google-apps.folder'
-const ENTRY_FIELDS = 'id,name,webViewLink'
+const ENTRY_FIELDS = 'id,name,webViewLink,mimeType'
 
 // Minimal shapes for the Drive REST API responses this file reads.
 
@@ -12,6 +12,7 @@ interface DriveFile {
   id: string
   name: string
   webViewLink?: string
+  mimeType?: string
 }
 
 interface DriveFileList {
@@ -29,7 +30,12 @@ function quoteForQuery(value: string): string {
 }
 
 function entryOf(file: DriveFile): DriveEntry {
-  return { id: file.id, name: file.name, webViewLink: file.webViewLink ?? '' }
+  return {
+    id: file.id,
+    name: file.name,
+    webViewLink: file.webViewLink ?? '',
+    mimeType: file.mimeType ?? '',
+  }
 }
 
 export class GoogleDriveStore implements TodoStore {

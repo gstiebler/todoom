@@ -5,6 +5,7 @@ import type { TodoomApp } from '../app/state'
 import { applyTheme, loadTheme } from './theme'
 import { collectProjects, collectContexts, collectPriorities, emptyFilter } from '../core/query'
 import { SaveFilter } from './SaveFilter'
+import { AskFilter } from './AskFilter'
 
 const STATUS_TEXT: Record<string, string> = {
   idle: '',
@@ -95,6 +96,7 @@ export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
         value={filter.search}
         onChange={(event) => app.setFilter({ search: event.target.value })}
       />
+      <AskFilter app={app} />
       {queryError && <p className="query-error">{queryError}</p>}
       {!queryError && filter.search.trim().length > 0 && (
         <SaveFilter app={app} query={filter.search} />

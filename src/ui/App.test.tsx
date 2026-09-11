@@ -4,13 +4,14 @@ import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react
 import { App } from './App'
 import { TodoomApp } from '../app/state'
 import { FakeStore } from '../drive/fakeStore'
+import { FakeModel } from '../app/fakeModel'
 
 const TODAY = '2026-09-10'
 
-async function mount(seed: string) {
+async function mount(seed: string, model = new FakeModel('unavailable')) {
   const store = new FakeStore({ 'todo.txt': seed })
   await store.signIn()
-  const app = new TodoomApp(store, () => TODAY)
+  const app = new TodoomApp(store, () => TODAY, model)
   await app.load(await store.workspace())
   const { container } = render(<App app={app} today={() => TODAY} />)
   return { app, root: container, store }
@@ -523,5 +524,36 @@ describe('smart filters', () => {
     fireEvent.click(root.querySelector('[aria-label="Delete Work"]')!)
     await waitFor(() => expect(app.state.filters).toEqual([]))
     expect(root.querySelector('.saved')).toBeNull()
+  })
+})
+
+describe('describe a filter', () => {
+  it('hides the button without a model', async () => {
+    const { root } = await mount('a\n')
+    expect(root.querySelector('.ask-filter')).toBeNull()
+  })
+
+  it('puts the answer into the search box', async () => {
+    const model = new FakeModel('available', ['+house'])
+    const { root } = await mount('a +house\nb +work\n', model)
+    await waitFor(() => expect(root.querySelector('.ask-filter')).not.toBeNull())
+    fireEvent.click(root.querySelector('.ask-filter')!)
+    fireEvent.change(root.querySelector('.ask-filter__text')!, { target: { value: 'house' } })
+    fireEvent.submit(root.querySelector('.ask-filter__form')!)
+    await waitFor(() => expect(root.querySelector<HTMLInputElement>('.search')?.value).toBe('+house'))
+    expect(root.querySelector('.ask-filter__form')).toBeNull()
+    expect(root.querySelectorAll('.task')).toHaveLength(1)
+  })
+
+  it('keeps the form open with the error', async () => {
+    const model = new FakeModel('downloadable', ['+house |', '|'])
+    const { root } = await mount('a +house\n', model)
+    await waitFor(() => expect(root.querySelector('.ask-filter')).not.toBeNull())
+    fireEvent.click(root.querySelector('.ask-filter')!)
+    fireEvent.change(root.querySelector('.ask-filter__text')!, { target: { value: 'house' } })
+    fireEvent.submit(root.querySelector('.ask-filter__form')!)
+    await waitFor(() => expect(root.querySelector('.ask-filter__form .query-error')).not.toBeNull())
+    expect(root.querySelector('.ask-filter__form .query-error')?.textContent).toBe('Unexpected |')
+    expect(root.querySelector<HTMLInputElement>('.search')?.value).toBe('')
   })
 })

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { App } from './App'
 import { TodoomApp } from '../app/state'
@@ -332,6 +332,55 @@ describe('attachments', () => {
     })
     return mounted
   }
+
+  function pickFile(root: HTMLElement, name: string): void {
+    const picker = root.querySelector('.attachment__picker') as HTMLInputElement
+    fireEvent.change(picker, { target: { files: [new File(['x'], name, { type: 'text/plain' })] } })
+  }
+
+  it('shows a spinner row and disables Add file while an upload runs', async () => {
+    const { root, store } = await mount('Buy milk\n')
+    fireEvent.click(root.querySelector('.task__attach')!)
+    const release = store.holdNextUpload()
+    pickFile(root, 'spec.pdf')
+    await waitFor(() => expect(root.querySelector('.attachment--pending')).not.toBeNull())
+    expect(root.querySelector('.attachment--pending')?.textContent).toContain('spec.pdf')
+    expect(root.querySelector('.attachment--pending .spinner')).not.toBeNull()
+    expect(root.querySelector('.attachment--pending .attachment__remove')).toBeNull()
+    expect((root.querySelector('.popover__add') as HTMLButtonElement).disabled).toBe(true)
+    release()
+    await waitFor(() => expect(root.querySelector('.attachment--pending')).toBeNull())
+    expect(root.querySelector('.attachment__link')?.textContent).toBe('spec.pdf')
+    expect((root.querySelector('.popover__add') as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('shows the error and a Retry on a failed upload', async () => {
+    const { root, store, app } = await mount('Buy milk\n')
+    fireEvent.click(root.querySelector('.task__attach')!)
+    store.failNextUploads(1)
+    pickFile(root, 'spec.pdf')
+    await waitFor(() => expect(root.querySelector('.attachment--failed')).not.toBeNull())
+    expect(root.querySelector('.attachment__error')?.textContent).toContain('spec.pdf')
+    expect(app.state.error).toBeNull()
+    fireEvent.click(root.querySelector('.attachment__retry')!)
+    await waitFor(() => expect(root.querySelector('.attachment--failed')).toBeNull())
+    expect(app.state.tasks[0]?.attachments).toHaveLength(1)
+  })
+
+  it('a failed removal greys the row and its × drops the error', async () => {
+    const { root, store } = await mount('Buy milk\n')
+    fireEvent.click(root.querySelector('.task__attach')!)
+    pickFile(root, 'spec.pdf')
+    await waitFor(() => expect(root.querySelector('.attachment__link')).not.toBeNull())
+    store.failNextTrash()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    fireEvent.click(root.querySelector('.attachment__remove')!)
+    await waitFor(() => expect(root.querySelector('.attachment--failed')).not.toBeNull())
+    expect(root.querySelector('.attachment__link')?.textContent).toBe('spec.pdf')
+    fireEvent.click(root.querySelector('.attachment--failed .attachment__remove')!)
+    expect(root.querySelector('.attachment--failed')).toBeNull()
+    expect(root.querySelector('.attachment__link')?.textContent).toBe('spec.pdf')
+  })
 
   it('shows the attachment count on the row', async () => {
     const { root } = await withAttachments()

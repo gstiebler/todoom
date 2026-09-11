@@ -1,6 +1,6 @@
 import { observer } from 'mobx-react-lite'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { TodoomApp } from '../app/state'
+import type { PendingAttachment, TodoomApp } from '../app/state'
 import type { DriveEntry } from '../drive/store'
 import { isPreviewable, PreviewModal } from './PreviewModal'
 
@@ -20,6 +20,11 @@ export const AttachmentList = observer(function AttachmentList({
   const picker = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<DriveEntry | null>(null)
   const closePreview = useCallback(() => setPreview(null), [])
+  const taskId = app.state.tasks[index]?.pairs['id'] ?? ''
+  const pending = app.pendingFor(index)
+  const uploads = pending.filter((entry) => entry.kind === 'upload')
+  const removing = (id: string) => pending.find((entry) => entry.kind === 'remove' && entry.key === id)
+  const uploading = uploads.some((entry) => entry.error === null)
 
   const detach = (id: string, name: string) => {
     if (!confirm(`Move ${name} to the Drive trash?`)) return
@@ -28,12 +33,13 @@ export const AttachmentList = observer(function AttachmentList({
 
   return (
     <>
-      {ids.length === 0 && <p className="popover__empty">No files yet.</p>}
+      {ids.length === 0 && uploads.length === 0 && <p className="popover__empty">No files yet.</p>}
       <ul className="attachment-list">
         {ids.map((id) => {
           const entry = app.attachmentsById.get(id)
+          const state = removing(id)
           return (
-            <li className="attachment" key={id}>
+            <li className={rowClass(state)} key={id}>
               {entry && isPreviewable(entry) ? (
                 <button
                   className="attachment__preview"
@@ -54,20 +60,45 @@ export const AttachmentList = observer(function AttachmentList({
               ) : (
                 <span className="attachment__missing">{id} (missing)</span>
               )}
+              {state && <PendingMark app={app} taskId={taskId} entry={state} />}
               <button
                 className="attachment__remove"
                 type="button"
-                title="Remove"
-                onClick={() => detach(id, entry?.name ?? id)}
+                title={state?.error ? 'Dismiss' : 'Remove'}
+                disabled={state !== undefined && state.error === null}
+                onClick={() =>
+                  state?.error ? app.dismissAttachment(taskId, id) : detach(id, entry?.name ?? id)
+                }
               >
                 ×
               </button>
             </li>
           )
         })}
+        {uploads.map((entry) => (
+          <li className={rowClass(entry)} key={entry.key}>
+            <span className="attachment__name">{entry.name}</span>
+            <PendingMark app={app} taskId={taskId} entry={entry} />
+            {entry.error && (
+              <button
+                className="attachment__remove"
+                type="button"
+                title="Dismiss"
+                onClick={() => app.dismissAttachment(taskId, entry.key)}
+              >
+                ×
+              </button>
+            )}
+          </li>
+        ))}
       </ul>
       <div className="popover__footer">
-        <button className="popover__add" type="button" onClick={() => picker.current?.click()}>
+        <button
+          className="popover__add"
+          type="button"
+          disabled={uploading}
+          onClick={() => picker.current?.click()}
+        >
           Add file
         </button>
       </div>
@@ -84,6 +115,36 @@ export const AttachmentList = observer(function AttachmentList({
         }}
       />
       {preview && <PreviewModal entry={preview} onClose={closePreview} />}
+    </>
+  )
+})
+
+function rowClass(entry: PendingAttachment | undefined): string {
+  if (!entry) return 'attachment'
+  return entry.error ? 'attachment attachment--failed' : 'attachment attachment--pending'
+}
+
+/** A spinner while the operation runs, its error and a Retry once it failed. */
+const PendingMark = observer(function PendingMark({
+  app,
+  taskId,
+  entry,
+}: {
+  app: TodoomApp
+  taskId: string
+  entry: PendingAttachment
+}) {
+  if (entry.error === null) return <span className="spinner" aria-label="Working" />
+  return (
+    <>
+      <span className="attachment__error">{entry.error}</span>
+      <button
+        className="attachment__retry"
+        type="button"
+        onClick={() => void app.retryAttachment(taskId, entry.key)}
+      >
+        Retry
+      </button>
     </>
   )
 })

@@ -749,6 +749,25 @@ button:hover { border-color: var(--accent); }
 
 .attachment__remove:hover { color: var(--overdue); }
 
+.attachment__name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment--pending { opacity: 0.6; }
+.attachment--failed { flex-wrap: wrap; }
+.attachment--failed .attachment__error { flex-basis: 100%; color: var(--overdue); font-size: 12px; }
+.attachment__retry { padding: 2px 8px; font-size: 12px; }
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .popover .popover__add { width: 100%; }
 
 .task__delete {

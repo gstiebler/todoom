@@ -423,6 +423,29 @@ export class TodoomApp {
     return this.state.tasks.indexOf(task)
   }
 
+  /** Reorders the file: the task at `from` ends up at `to`. */
+  moveTask(from: number, to: number): void {
+    const tasks = this.state.tasks
+    const task = tasks[from]
+    if (!task || from === to || to < 0 || to >= tasks.length) return
+    tasks.splice(from, 1)
+    tasks.splice(to, 0, task)
+    this.markDirty()
+  }
+
+  /** Dragging only makes sense when the list is the whole file in file order. */
+  get canReorder(): boolean {
+    const { sort, search, projects, contexts, priorities, dueView } = this.state.filter
+    return (
+      sort === 'manual' &&
+      search === '' &&
+      projects.length === 0 &&
+      contexts.length === 0 &&
+      priorities.length === 0 &&
+      dueView === 'all'
+    )
+  }
+
   async save(): Promise<void> {
     if (this.state.saveState !== 'dirty' && this.state.saveState !== 'error') return
     const ref = this.requireRef()

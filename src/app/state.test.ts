@@ -546,3 +546,53 @@ describe('deleteTask', () => {
     expect(app.state.pending.size).toBe(0)
   })
 })
+
+describe('moveTask', () => {
+  const names = (app: TodoomApp) => app.state.tasks.map((t) => t.description)
+
+  it('moves a task down and marks dirty', async () => {
+    const { app } = await setup('a\nb\nc\n')
+    app.moveTask(0, 2)
+    expect(names(app)).toEqual(['b', 'c', 'a'])
+    expect(app.state.saveState).toBe('dirty')
+  })
+
+  it('moves a task up', async () => {
+    const { app } = await setup('a\nb\nc\n')
+    app.moveTask(2, 0)
+    expect(names(app)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('ignores a no-op or an out-of-range move', async () => {
+    const { app } = await setup('a\nb\n')
+    app.moveTask(1, 1)
+    app.moveTask(0, 5)
+    app.moveTask(-1, 0)
+    expect(names(app)).toEqual(['a', 'b'])
+    expect(app.state.saveState).toBe('idle')
+  })
+
+  it('writes the new line order', async () => {
+    const { app, store, workspace } = await setup('a\nb\n')
+    app.moveTask(1, 0)
+    await app.save()
+    expect((await store.read(workspace.todo)).text).toBe('b\na\n')
+  })
+})
+
+describe('canReorder', () => {
+  it('needs manual sort and an otherwise empty filter', async () => {
+    const { app } = await setup()
+    expect(app.canReorder).toBe(false)
+    app.setFilter({ sort: 'manual' })
+    expect(app.canReorder).toBe(true)
+    app.setFilter({ showCompleted: true, dueView: 'all' })
+    expect(app.canReorder).toBe(true)
+    app.setFilter({ search: 'milk' })
+    expect(app.canReorder).toBe(false)
+    app.setFilter({ search: '', projects: ['house'] })
+    expect(app.canReorder).toBe(false)
+    app.setFilter({ projects: [], dueView: 'today' })
+    expect(app.canReorder).toBe(false)
+  })
+})

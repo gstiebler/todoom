@@ -1,5 +1,5 @@
 import { observer } from 'mobx-react-lite'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { TodoomApp } from '../app/state'
 import type { DriveEntry } from '../drive/store'
 import { isPreviewable, PreviewModal } from './PreviewModal'
@@ -19,6 +19,7 @@ export const AttachmentList = observer(function AttachmentList({
 }) {
   const picker = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<DriveEntry | null>(null)
+  const closePreview = useCallback(() => setPreview(null), [])
 
   const detach = (id: string, name: string) => {
     if (!confirm(`Move ${name} to the Drive trash?`)) return
@@ -82,7 +83,7 @@ export const AttachmentList = observer(function AttachmentList({
           event.target.value = ''
         }}
       />
-      {preview && <PreviewModal entry={preview} onClose={() => setPreview(null)} />}
+      {preview && <PreviewModal entry={preview} onClose={closePreview} />}
     </>
   )
 })

@@ -95,7 +95,9 @@ body {
   display: flex;
   justify-content: center;
   padding: 12vh 16px 16px;
-  z-index: 10;
+  /* Above .field .popover (20) and .popover--attachments (5): the preview
+     backdrop portals to document.body and must sit over both hosts. */
+  z-index: 21;
 }
 
 .modal {
@@ -731,7 +733,7 @@ button:hover { border-color: var(--accent); }
 .preview__frame {
   width: 100%;
   aspect-ratio: 4 / 3;
-  max-height: 80vh;
+  max-height: 70vh;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);

@@ -174,7 +174,12 @@ describe('GoogleDriveStore attachments', () => {
   })
 
   it('returns the id, name and Drive link of the upload', async () => {
-    driveBodies({ id: 'up', name: 'notes.txt', webViewLink: 'https://drive/up', mimeType: 'text/plain' })
+    driveBodies({
+      id: 'up',
+      name: 'notes.txt',
+      webViewLink: 'https://drive/up',
+      mimeType: 'text/plain',
+    })
     const store = new GoogleDriveStore(tokenSource('tok'))
 
     expect(await store.uploadFile(folder, file())).toEqual({

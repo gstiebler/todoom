@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { DriveEntry } from '../drive/store'
 
 export function isPreviewable(entry: DriveEntry): boolean {
@@ -14,17 +15,22 @@ export function PreviewModal({ entry, onClose }: { entry: DriveEntry; onClose: (
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Capture phase: pre-empts TaskModal's own window listener (registered
+    // earlier, in the bubble phase) and the popover's onKeyDown, both of which
+    // would otherwise also treat this Escape as theirs.
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation()
         onClose()
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose])
 
-  return (
+  // Rendered outside the popover/modal tree so its backdrop and Escape
+  // handling aren't at the mercy of whatever DOM node happens to host it.
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="modal preview"
@@ -52,10 +58,10 @@ export function PreviewModal({ entry, onClose }: { entry: DriveEntry; onClose: (
           className="preview__frame"
           src={previewUrl(entry.id)}
           title={entry.name}
-          allow="autoplay"
           onLoad={() => setLoading(false)}
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

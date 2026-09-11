@@ -396,29 +396,54 @@ describe('attachments', () => {
 
   it('opens the Drive preview in a modal and closes it on Escape', async () => {
     const { root } = await withPreviewable()
-    fireEvent.click(root.querySelector('.attachment__preview')!)
-    const frame = root.querySelector<HTMLIFrameElement>('.preview__frame')
+    const previewButton = root.querySelector<HTMLButtonElement>('.attachment__preview')!
+    previewButton.focus()
+    fireEvent.click(previewButton)
+    // The modal portals to document.body, outside the render container.
+    const frame = document.body.querySelector<HTMLIFrameElement>('.preview__frame')
     expect(frame?.getAttribute('src')).toBe('https://drive.google.com/file/d/img/preview')
-    expect(root.querySelector('.preview__title')?.textContent).toBe('photo.png')
-    expect(root.querySelector<HTMLAnchorElement>('.preview__open')?.href).toBe(
+    expect(document.body.querySelector('.preview__title')?.textContent).toBe('photo.png')
+    expect(document.body.querySelector<HTMLAnchorElement>('.preview__open')?.href).toBe(
       'https://drive.example/img',
     )
-    expect(root.querySelector('.preview__loading')).not.toBeNull()
+    expect(document.body.querySelector('.preview__loading')).not.toBeNull()
     fireEvent.load(frame!)
-    expect(root.querySelector('.preview__loading')).toBeNull()
-    fireEvent.keyDown(window, { key: 'Escape' })
-    expect(root.querySelector('.preview')).toBeNull()
+    expect(document.body.querySelector('.preview__loading')).toBeNull()
+    // Fired on the focused button, the way a real Escape keypress bubbles, so
+    // it exercises the popover's own onKeyDown rather than bypassing it.
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(document.body.querySelector('.preview')).toBeNull()
     expect(root.querySelector('.popover--attachments')).not.toBeNull()
+  })
+
+  it('leaves the task modal open when Escape only closes its preview', async () => {
+    const { root, app } = await mount('Buy milk file:img\n')
+    await act(async () => {
+      app.attachmentsById.set('img', {
+        id: 'img',
+        name: 'photo.png',
+        webViewLink: 'https://drive.example/img',
+        mimeType: 'image/png',
+      })
+    })
+    fireEvent.click(root.querySelector('.task__text')!)
+    expect(root.querySelector('.task-modal')).not.toBeNull()
+    const previewButton = root.querySelector<HTMLButtonElement>('.attachment__preview')!
+    fireEvent.click(previewButton)
+    expect(document.body.querySelector('.preview')).not.toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(document.body.querySelector('.preview')).toBeNull()
+    expect(root.querySelector('.task-modal')).not.toBeNull()
   })
 
   it('closes the preview from its button and its backdrop', async () => {
     const { root } = await withPreviewable()
     fireEvent.click(root.querySelector('.attachment__preview')!)
-    fireEvent.click(root.querySelector('.preview__close')!)
-    expect(root.querySelector('.preview')).toBeNull()
+    fireEvent.click(document.body.querySelector('.preview__close')!)
+    expect(document.body.querySelector('.preview')).toBeNull()
     fireEvent.click(root.querySelector('.attachment__preview')!)
-    fireEvent.click(root.querySelector('.preview')!.parentElement!)
-    expect(root.querySelector('.preview')).toBeNull()
+    fireEvent.click(document.body.querySelector('.preview')!.parentElement!)
+    expect(document.body.querySelector('.preview')).toBeNull()
   })
 })
 

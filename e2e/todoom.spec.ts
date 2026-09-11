@@ -127,3 +127,14 @@ test('saves a search as a filter and applies it', async ({ page }) => {
   await expect(page.locator('.search')).toHaveValue('+house & (A)')
   await expect(page.locator('.task')).toHaveCount(1)
 })
+
+test('describes a filter and gets a query in the search box', async ({ page }) => {
+  await page.goto(PAGE)
+  await page.click('.ask-filter')
+  await page.fill('.ask-filter__text', 'urgent house stuff')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.search')).toHaveValue('+house & (A)')
+  await expect(page.locator('.ask-filter__form')).toHaveCount(0)
+  await expect(page.locator('.task')).toHaveCount(1)
+  await expect(page.locator('.save-filter')).toBeVisible()
+})

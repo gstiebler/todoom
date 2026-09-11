@@ -3,6 +3,7 @@ import { reaction } from 'mobx'
 import { createRoot } from 'react-dom/client'
 import { TodoomApp } from '../src/app/state'
 import { FakeStore } from '../src/drive/fakeStore'
+import { FakeModel } from '../src/app/fakeModel'
 import { App } from '../src/ui/App'
 
 const TODAY = '2026-09-10'
@@ -15,7 +16,8 @@ async function main(): Promise<void> {
     'todo.txt': '(A) Call plumber +house @phone\nBuy milk +groceries\n',
   })
   await store.signIn()
-  const app = new TodoomApp(store, () => TODAY)
+  const model = new FakeModel('available', ['+house & (A)'])
+  const app = new TodoomApp(store, () => TODAY, model)
   await app.load(await store.workspace())
 
   // A reaction's effect runs untracked, so it may change state; calling save()

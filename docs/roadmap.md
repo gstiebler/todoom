@@ -27,8 +27,11 @@ GitHub contributions graph, for completions.
 
 ## Smart filters
 
-Saved filter queries with their own small language, along the lines of
-[Todoist filters](https://www.todoist.com/help/todoist/features/introduction-to-filters-V98wIH).
+A small query language for the search box, along the lines of
+[Todoist filters](https://www.todoist.com/help/todoist/features/introduction-to-filters-V98wIH):
+the user types a filter expression and the list shows what matches. From the
+results, one action saves that search as a named filter, which then sits in the
+sidebar beside the built-in views.
 
 ## Columns view
 

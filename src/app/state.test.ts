@@ -360,7 +360,7 @@ describe('saved filters', () => {
     await store.signIn()
     const app = new TodoomApp(store, () => TODAY)
     await app.load(await store.workspace())
-    expect(app.state.filters).toEqual([{ name: 'Home', query: '+home' }])
+    expect(app.state.filters).toEqual([{ name: 'Home', query: '+home', column: false }])
   })
 
   it('is empty when there is no filters.txt yet', async () => {
@@ -374,13 +374,13 @@ describe('saved filters', () => {
     await app.saveFilter('Calls', '@phone')
     await app.saveFilter('Home', '+home & !done')
     expect(app.state.filters).toEqual([
-      { name: 'Home', query: '+home & !done' },
-      { name: 'Calls', query: '@phone' },
+      { name: 'Home', query: '+home & !done', column: false },
+      { name: 'Calls', query: '@phone', column: false },
     ])
     const file = (await store.findOrCreateFileIn(app.folder, 'filters.txt'))
     expect((await store.read(file)).text).toBe('Home: +home & !done\nCalls: @phone\n')
     await app.deleteFilter('Home')
-    expect(app.state.filters).toEqual([{ name: 'Calls', query: '@phone' }])
+    expect(app.state.filters).toEqual([{ name: 'Calls', query: '@phone', column: false }])
     expect((await store.read(file)).text).toBe('Calls: @phone\n')
   })
 

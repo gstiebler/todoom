@@ -392,8 +392,8 @@ export class TodoomApp {
     if (name.includes(': ')) throw new Error('Filter names cannot contain ": "')
     const current = this.state.filters ?? []
     const next = current.some((filter) => filter.name === name)
-      ? current.map((filter) => (filter.name === name ? { name, query } : filter))
-      : [...current, { name, query }]
+      ? current.map((filter) => (filter.name === name ? { ...filter, query } : filter))
+      : [...current, { name, query, column: false }]
     await this.writeFilters(next)
   }
 

@@ -499,7 +499,9 @@ describe('smart filters', () => {
     fireEvent.click(root.querySelector('.save-filter')!)
     fireEvent.change(root.querySelector('.save-filter__name')!, { target: { value: 'House' } })
     fireEvent.submit(root.querySelector('.save-filter__form')!)
-    await waitFor(() => expect(app.state.filters).toEqual([{ name: 'House', query: '+house' }]))
+    await waitFor(() =>
+      expect(app.state.filters).toEqual([{ name: 'House', query: '+house', column: false }]),
+    )
     expect(root.querySelector('.save-filter__form')).toBeNull()
     expect([...root.querySelectorAll('.saved .view-btn')].map((b) => b.textContent)).toEqual(['House'])
   })

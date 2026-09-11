@@ -19,14 +19,28 @@ function Tag({ label, kind }: { label: string; kind: 'project' | 'context' }) {
   )
 }
 
+type Half = 'before' | 'after'
+
+/** What a row needs to take part in a drag; absent when the row cannot move. */
+export interface DragProps {
+  dragging: boolean
+  drop: Half | null
+  onStart: () => void
+  onOver: (half: Half) => void
+  onDrop: () => void
+  onEnd: () => void
+}
+
 export const TaskRow = observer(function TaskRow({
   app,
   task,
   today,
+  drag,
 }: {
   app: TodoomApp
   task: Task
   today: string
+  drag?: DragProps
 }) {
   const { locale, t } = useLocale()
   const [open, setOpen] = useState(false)
@@ -36,9 +50,33 @@ export const TaskRow = observer(function TaskRow({
   const rec = task.pairs['rec']
   const blocker = blockerOf(task, app.state.tasks)
   if (blocker) classes.push('task--blocked')
+  if (drag?.dragging) classes.push('task--dragging')
+  if (drag?.drop) classes.push(`task--drop-${drag.drop}`)
 
   return (
-    <li className={classes.join(' ')}>
+    <li
+      className={classes.join(' ')}
+      draggable={drag !== undefined}
+      onDragStart={(event) => {
+        if (!drag) return
+        // Firefox needs data on the transfer before it starts a drag at all.
+        event.dataTransfer.setData('text/plain', String(index))
+        event.dataTransfer.effectAllowed = 'move'
+        drag.onStart()
+      }}
+      onDragOver={(event) => {
+        if (!drag) return
+        event.preventDefault()
+        const rect = event.currentTarget.getBoundingClientRect()
+        drag.onOver(event.clientY < rect.top + rect.height / 2 ? 'before' : 'after')
+      }}
+      onDrop={(event) => {
+        if (!drag) return
+        event.preventDefault()
+        drag.onDrop()
+      }}
+      onDragEnd={drag?.onEnd}
+    >
       <input
         className={`task__check task__check--${task.priority?.toLowerCase() ?? 'none'}`}
         type="checkbox"
@@ -133,14 +171,39 @@ export const TaskList = observer(function TaskList({
   today: string
 }) {
   const { t } = useLocale()
+  // Both are indexes into app.state.tasks, which is what moveTask speaks.
+  const [dragging, setDragging] = useState<number | null>(null)
+  const [target, setTarget] = useState<{ index: number; half: Half } | null>(null)
   const visible = app.visibleTasks()
   if (visible.length === 0) return <p className="empty">{t('task.empty')}</p>
 
+  const clear = () => {
+    setDragging(null)
+    setTarget(null)
+  }
+  const dragFor = (index: number): DragProps => ({
+    dragging: dragging === index,
+    drop: target?.index === index ? target.half : null,
+    onStart: () => setDragging(index),
+    onOver: (half) => setTarget({ index, half }),
+    onDrop: () => {
+      if (dragging !== null && target !== null) {
+        // Removing `from` first shifts everything below it up by one.
+        const slot = target.half === 'before' ? target.index : target.index + 1
+        app.moveTask(dragging, dragging < slot ? slot - 1 : slot)
+      }
+      clear()
+    },
+    onEnd: clear,
+  })
+
   return (
     <ul className="task-list">
-      {visible.map((task) => (
-        <TaskRow key={app.indexOf(task)} app={app} task={task} today={today} />
-      ))}
+      {visible.map((task) => {
+        const index = app.indexOf(task)
+        const drag = app.canReorder && !task.completed ? dragFor(index) : undefined
+        return <TaskRow key={index} app={app} task={task} today={today} drag={drag} />
+      })}
     </ul>
   )
 })

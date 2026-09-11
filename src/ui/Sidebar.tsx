@@ -9,6 +9,7 @@ import { SaveFilter } from './SaveFilter'
 import { AskFilter } from './AskFilter'
 import { LabelSection } from './LabelSection'
 import { useLocale } from './locale'
+import { saveSort } from '../app/sortPref'
 
 const STATUS_TEXT: Record<SaveState, Key | ''> = {
   idle: '',
@@ -215,6 +216,23 @@ export const Sidebar = observer(function Sidebar({
         >
           {t('sidebar.showCompleted')}
         </button>
+        <button
+          className={
+            filter.sort === 'manual'
+              ? 'toggle-btn sort-btn toggle-btn--active'
+              : 'toggle-btn sort-btn'
+          }
+          onClick={() => {
+            const sort = filter.sort === 'manual' ? 'smart' : 'manual'
+            saveSort(sort)
+            app.setFilter({ sort })
+          }}
+        >
+          {t(filter.sort === 'manual' ? 'sidebar.sortManual' : 'sidebar.sortSmart')}
+        </button>
+        {filter.sort === 'manual' && !app.canReorder && (
+          <p className="toggles__note">{t('sidebar.reorderHint')}</p>
+        )}
       </div>
 
       <Chips

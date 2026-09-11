@@ -40,4 +40,20 @@ if (typeof window !== 'undefined') {
       Object.defineProperty(globalThis, name, { value: storage, configurable: true })
     }
   }
+
+  // jsdom has no DragEvent (https://github.com/jsdom/jsdom/issues/2913), so
+  // @testing-library/dom falls back to a bare Event that drops clientY and
+  // friends. Basing it on MouseEvent keeps drag-and-drop tests able to assert
+  // on drop position.
+  if (!window.DragEvent) {
+    class DragEventPolyfill extends window.MouseEvent {
+      dataTransfer: DataTransfer | null
+      constructor(type: string, init: MouseEventInit & { dataTransfer?: DataTransfer } = {}) {
+        super(type, init)
+        this.dataTransfer = init.dataTransfer ?? null
+      }
+    }
+    Object.defineProperty(window, 'DragEvent', { value: DragEventPolyfill, configurable: true })
+    Object.defineProperty(globalThis, 'DragEvent', { value: DragEventPolyfill, configurable: true })
+  }
 }

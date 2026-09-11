@@ -474,6 +474,8 @@ button:hover { border-color: var(--accent); }
   color: #fff;
 }
 
+.toggles__note { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+
 .filters { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .filters__heading {
@@ -669,6 +671,11 @@ button:hover { border-color: var(--accent); }
 .task--blocked .task__text,
 .task--blocked .task__meta { color: var(--muted); }
 .task__blocked { margin: 2px 0 0; font-size: 12px; color: var(--muted); font-style: italic; }
+
+/* Drag feedback: the moving row fades, the drop slot is a 2px accent line. */
+.task--dragging { opacity: 0.4; }
+.task--drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+.task--drop-after { box-shadow: 0 2px 0 var(--accent); }
 
 .task__attach {
   display: inline-flex;

@@ -1070,3 +1070,66 @@ describe('locale', () => {
     expect(root.querySelector('.add-task')?.textContent).toBe('+ Adicionar tarefa')
   })
 })
+
+describe('manual sort', () => {
+  afterEach(() => localStorage.clear())
+
+  const titles = (root: HTMLElement) =>
+    [...root.querySelectorAll('.task__text')].map((el) => el.textContent)
+
+  const dataTransfer = { setData: () => {}, effectAllowed: 'move' }
+
+  it('shows file order when toggled and remembers the choice', async () => {
+    const { root } = await mount('(B) second\n(A) first\n')
+    expect(titles(root)).toEqual(['first', 'second'])
+    fireEvent.click(root.querySelector('.sort-btn')!)
+    expect(root.querySelector('.sort-btn')?.textContent).toBe('Sort: Manual')
+    expect(titles(root)).toEqual(['second', 'first'])
+    expect(localStorage.getItem('todoom.sort')).toBe('manual')
+  })
+
+  it('reorders by dragging a row above another', async () => {
+    const { app, root } = await mount('a\nb\nc\n')
+    act(() => app.setFilter({ sort: 'manual' }))
+    const rows = () => [...root.querySelectorAll('.task')]
+    expect(rows().every((row) => row.getAttribute('draggable') === 'true')).toBe(true)
+    fireEvent.dragStart(rows()[2]!, { dataTransfer })
+    // jsdom rects are all zero, so a negative clientY lands in the top half.
+    fireEvent.dragOver(rows()[0]!, { clientY: -1, dataTransfer })
+    expect(rows()[0]?.classList.contains('task--drop-before')).toBe(true)
+    fireEvent.drop(rows()[0]!, { dataTransfer })
+    expect(titles(root)).toEqual(['c', 'a', 'b'])
+    expect(app.state.tasks.map((t) => t.description)).toEqual(['c', 'a', 'b'])
+    expect(root.querySelector('.task--drop-before')).toBeNull()
+  })
+
+  it('reorders by dragging a row below another', async () => {
+    const { app, root } = await mount('a\nb\nc\n')
+    act(() => app.setFilter({ sort: 'manual' }))
+    const rows = () => [...root.querySelectorAll('.task')]
+    fireEvent.dragStart(rows()[0]!, { dataTransfer })
+    fireEvent.dragOver(rows()[2]!, { clientY: 1, dataTransfer })
+    expect(rows()[2]?.classList.contains('task--drop-after')).toBe(true)
+    fireEvent.drop(rows()[2]!, { dataTransfer })
+    expect(titles(root)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('is not draggable with a search, and says why', async () => {
+    const { app, root } = await mount('a\nb\n')
+    act(() => app.setFilter({ sort: 'manual', search: 'a' }))
+    expect(root.querySelector('.task')?.getAttribute('draggable')).toBe('false')
+    expect(root.querySelector('.toggles__note')?.textContent).toBe('Clear the filter to reorder.')
+    act(() => app.setFilter({ search: '' }))
+    expect(root.querySelector('.toggles__note')).toBeNull()
+  })
+
+  it('leaves completed rows out of dragging', async () => {
+    const { app, root } = await mount('a\nx 2026-09-09 done\n')
+    act(() => app.setFilter({ sort: 'manual', showCompleted: true }))
+    const done = root.querySelector('.task--done')!
+    expect(done.getAttribute('draggable')).toBe('false')
+    fireEvent.dragStart(root.querySelector('.task')!, { dataTransfer })
+    fireEvent.dragOver(done, { clientY: 1, dataTransfer })
+    expect(done.classList.contains('task--drop-after')).toBe(false)
+  })
+})

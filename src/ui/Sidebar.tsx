@@ -62,7 +62,13 @@ function Chips({
   )
 }
 
-export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
+export const Sidebar = observer(function Sidebar({
+  app,
+  onSearch,
+}: {
+  app: TodoomApp
+  onSearch: () => void
+}) {
   const { tasks, filter, saveState, error, page } = app.state
   const filters = app.state.filters
   const queryError = app.queryError
@@ -90,12 +96,17 @@ export const Sidebar = observer(function Sidebar({ app }: { app: TodoomApp }) {
         </button>
       </div>
 
-      <input
-        className="search"
-        placeholder="Search or filter…"
-        value={filter.search}
-        onChange={(event) => app.setFilter({ search: event.target.value })}
-      />
+      <div className="search-row">
+        <input
+          className="search"
+          placeholder="Search or filter…"
+          value={filter.search}
+          onChange={(event) => app.setFilter({ search: event.target.value })}
+        />
+        <button className="search-btn" aria-label="Search" onClick={onSearch}>
+          🔍
+        </button>
+      </div>
       <AskFilter app={app} />
       {queryError && <p className="query-error">{queryError}</p>}
       {!queryError && filter.search.trim().length > 0 && (

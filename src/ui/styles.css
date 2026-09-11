@@ -765,6 +765,49 @@ button:hover { border-color: var(--accent); }
 .gantt__arrowhead { fill: var(--muted); }
 .gantt__empty { color: var(--muted); }
 
+.search-row { display: flex; gap: 6px; align-items: center; }
+.search-row .search { flex: 1 1 auto; }
+.search-btn {
+  display: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+@media (max-width: 720px) {
+  .search-btn { display: inline-block; }
+}
+.search-modal__input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 16px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+.search-modal__results { list-style: none; margin: 10px 0 0; padding: 0; }
+.search-modal__row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.search-modal__row:hover { background: var(--surface); }
+.search-modal__title {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-modal__due { color: var(--muted); font-size: 12px; }
+.search-modal__project { color: var(--accent); font-size: 12px; }
+
 /* The terminal skin: same layout, repainted. It comes last so its square corners
    win over the rounded ones above without needing !important. */
 [data-theme='terminal'] {

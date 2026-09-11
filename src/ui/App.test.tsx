@@ -692,3 +692,116 @@ describe('gantt', () => {
     expect(root.querySelectorAll('.gantt__row')).toHaveLength(1)
   })
 })
+
+describe('search modal', () => {
+  function openSearch(root: HTMLElement) {
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    return root.querySelector<HTMLInputElement>('.search-modal__input')!
+  }
+
+  it('opens with Ctrl+K and focuses the query', async () => {
+    const { root } = await mount('Buy milk\n')
+    const input = openSearch(root)
+    expect(input).not.toBeNull()
+    expect(document.activeElement).toBe(input)
+  })
+
+  it('opens with Cmd+K', async () => {
+    const { root } = await mount('Buy milk\n')
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    expect(root.querySelector('.search-modal')).not.toBeNull()
+  })
+
+  it('opens with / when nothing is focused', async () => {
+    const { root } = await mount('Buy milk\n')
+    fireEvent.keyDown(window, { key: '/' })
+    expect(root.querySelector('.search-modal')).not.toBeNull()
+  })
+
+  it('ignores / while an input is focused', async () => {
+    const { root } = await mount('Buy milk\n')
+    root.querySelector<HTMLInputElement>('.search')!.focus()
+    fireEvent.keyDown(window, { key: '/' })
+    expect(root.querySelector('.search-modal')).toBeNull()
+  })
+
+  it('ignores the shortcut while another modal is open', async () => {
+    const { root } = await mount('Buy milk\n')
+    fireEvent.click(root.querySelector('.add-task')!)
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    expect(root.querySelector('.search-modal')).toBeNull()
+  })
+
+  it('narrows the preview and the list behind while typing', async () => {
+    const { root, app } = await mount('Call +house\nBuy milk +groceries\nA +house\n')
+    const input = openSearch(root)
+    fireEvent.change(input, { target: { value: '+house' } })
+    expect(app.state.filter.search).toBe('+house')
+    expect(root.querySelectorAll('.search-modal__row')).toHaveLength(2)
+    expect(root.querySelectorAll('.task')).toHaveLength(2)
+  })
+
+  it('shows at most eight preview rows', async () => {
+    const seed = Array.from({ length: 10 }, (_, i) => `Task ${i}`).join('\n') + '\n'
+    const { root } = await mount(seed)
+    openSearch(root)
+    expect(root.querySelectorAll('.search-modal__row')).toHaveLength(8)
+  })
+
+  it('keeps the query on Enter and restores it on Escape', async () => {
+    const { root, app } = await mount('Call +house\nBuy milk\n')
+    fireEvent.change(root.querySelector('.search')!, { target: { value: 'milk' } })
+    let input = openSearch(root)
+    fireEvent.change(input, { target: { value: '+house' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(root.querySelector('.search-modal')).toBeNull()
+    expect(app.state.filter.search).toBe('+house')
+
+    input = openSearch(root)
+    fireEvent.change(input, { target: { value: 'nothing' } })
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(root.querySelector('.search-modal')).toBeNull()
+    expect(app.state.filter.search).toBe('+house')
+  })
+
+  it('closes on backdrop click keeping the query', async () => {
+    const { root, app } = await mount('Buy milk\n')
+    const input = openSearch(root)
+    fireEvent.change(input, { target: { value: 'milk' } })
+    fireEvent.click(root.querySelector('.modal-backdrop')!)
+    expect(root.querySelector('.search-modal')).toBeNull()
+    expect(app.state.filter.search).toBe('milk')
+  })
+
+  it('shows the query error under the input', async () => {
+    const { root } = await mount('Buy milk\n')
+    const input = openSearch(root)
+    fireEvent.change(input, { target: { value: '(+home' } })
+    expect(root.querySelector('.search-modal .query-error')).not.toBeNull()
+  })
+
+  it('opens the picked task in its modal', async () => {
+    const { root } = await mount('Buy milk due:2026-09-11 +groceries\n')
+    openSearch(root)
+    const row = root.querySelector('.search-modal__row')!
+    expect(row.textContent).toContain('Buy milk')
+    expect(row.textContent).toContain('Tomorrow')
+    expect(row.textContent).toContain('+groceries')
+    fireEvent.click(row)
+    expect(root.querySelector('.search-modal')).toBeNull()
+    expect(root.querySelector<HTMLInputElement>('.task-modal__title')?.value).toBe('Buy milk')
+  })
+
+  it('switches to the tasks page when opened elsewhere', async () => {
+    const { root, app } = await mount('Buy milk\n')
+    app.showPage('stats')
+    openSearch(root)
+    expect(app.state.page).toBe('tasks')
+  })
+
+  it('has a search button in the sidebar that opens the modal', async () => {
+    const { root } = await mount('Buy milk\n')
+    fireEvent.click(root.querySelector('[aria-label="Search"]')!)
+    expect(root.querySelector('.search-modal')).not.toBeNull()
+  })
+})

@@ -380,7 +380,7 @@ export class TodoomApp {
 
   visibleTasks(): Task[] {
     const filter = { ...this.state.filter, search: this.validSearch }
-    return sortTasks(filterTasks(this.state.tasks, filter, this.today()))
+    return sortTasks(filterTasks(this.state.tasks, filter, this.today()), filter.sort)
   }
 
   /** Asks the on-device model for a query and puts it in the search box. */

@@ -1,4 +1,4 @@
-import type { DueView, Filter } from '../core/query'
+import type { DueView, Filter, SortMode } from '../core/query'
 import { emptyFilter } from '../core/query'
 
 const DUE_VIEWS: DueView[] = ['all', 'overdue', 'today', 'upcoming']
@@ -11,6 +11,7 @@ export function filterToQuery(filter: Filter): string {
   if (filter.search.length > 0) params.set('q', filter.search)
   if (filter.showCompleted) params.set('done', '1')
   if (filter.dueView !== 'all') params.set('due', filter.dueView)
+  if (filter.sort === 'manual') params.set('sort', 'manual')
   return params.toString()
 }
 
@@ -20,7 +21,7 @@ function values(params: URLSearchParams, name: string): string[] {
   return params.getAll(name).filter((value) => value.length > 0)
 }
 
-export function filterFromQuery(query: string): Filter {
+export function filterFromQuery(query: string, defaultSort: SortMode = 'smart'): Filter {
   const params = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query)
   const due = params.get('due')
   return {
@@ -31,5 +32,6 @@ export function filterFromQuery(query: string): Filter {
     search: params.get('q') ?? '',
     showCompleted: params.get('done') === '1',
     dueView: due && DUE_VIEWS.includes(due as DueView) ? (due as DueView) : 'all',
+    sort: params.get('sort') === 'manual' ? 'manual' : defaultSort,
   }
 }

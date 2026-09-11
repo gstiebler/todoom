@@ -159,7 +159,7 @@ describe('sortTasks', () => {
         '(A) First',
       ].join('\n'),
     )
-    const out = sortTasks(tasks).map((t) => formatTask(t))
+    const out = sortTasks(tasks, 'smart').map((t) => formatTask(t))
     expect(out).toEqual([
       '(A) First',
       '(B) Second',
@@ -172,7 +172,20 @@ describe('sortTasks', () => {
   it('does not mutate the input array', () => {
     const tasks = parseFile('(B) b\n(A) a')
     const before = tasks.map((t) => t.description)
-    sortTasks(tasks)
+    sortTasks(tasks, 'smart')
     expect(tasks.map((t) => t.description)).toEqual(before)
+  })
+
+  it('keeps file order in manual mode with completed tasks last', () => {
+    const tasks = parseFile(
+      ['x 2026-09-09 Done thing', '(B) Second', '(A) First', 'x 2026-09-08 Other done'].join('\n'),
+    )
+    const out = sortTasks(tasks, 'manual').map((t) => formatTask(t))
+    expect(out).toEqual([
+      '(B) Second',
+      '(A) First',
+      'x 2026-09-09 Done thing',
+      'x 2026-09-08 Other done',
+    ])
   })
 })

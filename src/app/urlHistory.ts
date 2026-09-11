@@ -12,7 +12,8 @@ function filtersEqual(a: Filter, b: Filter): boolean {
     arraysEqual(a.priorities, b.priorities) &&
     a.search === b.search &&
     a.showCompleted === b.showCompleted &&
-    a.dueView === b.dueView
+    a.dueView === b.dueView &&
+    a.sort === b.sort
   )
 }
 
@@ -26,7 +27,8 @@ function isSearchOnlyChange(previous: Filter, next: Filter): boolean {
     arraysEqual(previous.contexts, next.contexts) &&
     arraysEqual(previous.priorities, next.priorities) &&
     previous.showCompleted === next.showCompleted &&
-    previous.dueView === next.dueView
+    previous.dueView === next.dueView &&
+    previous.sort === next.sort
   )
 }
 

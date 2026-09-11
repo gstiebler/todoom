@@ -9,6 +9,7 @@ import { SignIn } from './ui/SignIn'
 import { loadLocale, t, type Locale } from './ui/i18n'
 import { filterFromQuery } from './app/urlState'
 import { syncFilterHistory } from './app/urlHistory'
+import { loadSort } from './app/sortPref'
 import { clearWorkspace, createDebouncedSaver, openWorkspace, type Workspace } from './app/session'
 import { SignedOutError } from './drive/tokens'
 
@@ -31,7 +32,7 @@ function start(store: TodoStore, workspace: Workspace, locale: Locale): void {
   const app = new TodoomApp(store, todayIso)
   const saver = createDebouncedSaver(app, 2000)
 
-  app.setFilter(filterFromQuery(window.location.search))
+  app.setFilter(filterFromQuery(window.location.search, loadSort()))
   let lastSyncedFilter = app.state.filter
 
   // The components observe the store themselves, so these reactions only carry
@@ -52,7 +53,7 @@ function start(store: TodoStore, workspace: Workspace, locale: Locale): void {
   )
 
   window.addEventListener('popstate', () => {
-    app.setFilter(filterFromQuery(window.location.search))
+    app.setFilter(filterFromQuery(window.location.search, loadSort()))
   })
 
   window.addEventListener('blur', () => void saver.flush())

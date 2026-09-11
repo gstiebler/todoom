@@ -22,7 +22,7 @@ const Column = observer(function Column({
   // where its tasks would be instead of taking the page down.
   try {
     const query = { ...emptyFilter(), search: filter.query, showCompleted: current.showCompleted }
-    matching = sortTasks(filterTasks(tasks, query, today))
+    matching = sortTasks(filterTasks(tasks, query, today), current.sort)
   } catch (failure) {
     error = failure instanceof Error ? failure.message : String(failure)
   }

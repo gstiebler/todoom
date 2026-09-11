@@ -4,6 +4,8 @@ import { matchesQuery, parseQuery } from './filterQuery'
 
 export type DueView = 'all' | 'overdue' | 'today' | 'upcoming'
 
+export type SortMode = 'smart' | 'manual'
+
 export interface Filter {
   projects: string[]
   contexts: string[]
@@ -11,6 +13,7 @@ export interface Filter {
   search: string
   showCompleted: boolean
   dueView: DueView
+  sort: SortMode
 }
 
 export function emptyFilter(): Filter {
@@ -21,6 +24,7 @@ export function emptyFilter(): Filter {
     search: '',
     showCompleted: false,
     dueView: 'all',
+    sort: 'smart',
   }
 }
 
@@ -92,12 +96,12 @@ export function filterTasks(tasks: Task[], filter: Filter, today: string): Task[
   })
 }
 
-export function sortTasks(tasks: Task[]): Task[] {
+export function sortTasks(tasks: Task[], sort: SortMode): Task[] {
   return tasks
     .map((task, index) => ({ task, index }))
     .sort((a, b) => {
       const byDone = Number(a.task.completed) - Number(b.task.completed)
-      if (byDone !== 0) return byDone
+      if (byDone !== 0 || sort === 'manual') return byDone
 
       const pa = a.task.priority ?? '~'
       const pb = b.task.priority ?? '~'

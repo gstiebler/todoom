@@ -15,6 +15,7 @@ describe('filterToQuery', () => {
       search: 'call plumber',
       showCompleted: true,
       dueView: 'overdue',
+      sort: 'manual' as const,
     })
     const params = new URLSearchParams(query)
     expect(params.getAll('project')).toEqual(['house', 'work'])
@@ -23,6 +24,7 @@ describe('filterToQuery', () => {
     expect(params.get('q')).toBe('call plumber')
     expect(params.get('done')).toBe('1')
     expect(params.get('due')).toBe('overdue')
+    expect(params.get('sort')).toBe('manual')
   })
 })
 
@@ -47,6 +49,7 @@ describe('filterFromQuery', () => {
       search: 'milk',
       showCompleted: true,
       dueView: 'upcoming' as const,
+      sort: 'manual' as const,
     }
     expect(filterFromQuery(filterToQuery(filter))).toEqual(filter)
   })
@@ -59,11 +62,19 @@ describe('filterFromQuery', () => {
       search: 'find & replace % something',
       showCompleted: false,
       dueView: 'today' as const,
+      sort: 'smart' as const,
     }
     expect(filterFromQuery(filterToQuery(filter))).toEqual(filter)
   })
 
   it('drops empty list parameters instead of filtering on an empty string', () => {
     expect(filterFromQuery('?project=&context=&pri=')).toEqual(emptyFilter())
+  })
+
+  it('defaults sort to smart, or to the given default when the URL is silent', () => {
+    expect(filterFromQuery('').sort).toBe('smart')
+    expect(filterFromQuery('', 'manual').sort).toBe('manual')
+    expect(filterFromQuery('sort=manual').sort).toBe('manual')
+    expect(filterFromQuery('sort=nonsense', 'manual').sort).toBe('manual')
   })
 })

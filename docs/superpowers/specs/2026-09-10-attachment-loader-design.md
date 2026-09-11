@@ -53,7 +53,7 @@ rejection becomes a row on screen.
   after the real ones, with `.attachment--pending` / `.attachment--failed`,
   a `.spinner` span, and the Retry / × buttons.
 - `src/ui/styles.css`: `.attachment--pending { opacity: .6 }`,
-  `.attachment--failed .attachment__error { color: var(--danger) }`,
+  `.attachment--failed .attachment__error { color: var(--overdue) }`,
   a `.spinner` keyframe (an existing `--muted` border that rotates).
 
 ## Testing

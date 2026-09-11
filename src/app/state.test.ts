@@ -535,3 +535,14 @@ describe('translate', () => {
     expect(app.state.modelProgress).toBeNull()
   })
 })
+
+describe('deleteTask', () => {
+  it('drops the pending attachments of the deleted task', async () => {
+    const { app, store } = await setup()
+    store.failNextUploads(1)
+    await app.attachFiles(0, [upload('spec.pdf')])
+    expect(app.state.pending.size).toBe(1)
+    app.deleteTask(0)
+    expect(app.state.pending.size).toBe(0)
+  })
+})

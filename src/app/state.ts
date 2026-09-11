@@ -155,7 +155,8 @@ export class TodoomApp {
     const taskId = this.identify(index)
     const entries = files.map((file): PendingAttachment => {
       this.pendingCount += 1
-      return { key: `${file.name}#${this.pendingCount}`, kind: 'upload', name: file.name, error: null, file }
+      const key = `${file.name}#${this.pendingCount}`
+      return { key, kind: 'upload', name: file.name, error: null, file }
     })
     runInAction(() => {
       this.state.pending.set(taskId, [...this.pendingFor(index), ...entries])
@@ -337,7 +338,9 @@ export class TodoomApp {
   }
 
   deleteTask(index: number): void {
-    if (!this.state.tasks[index]) return
+    const task = this.state.tasks[index]
+    if (!task) return
+    if (task.pairs['id']) this.state.pending.delete(task.pairs['id'])
     this.state.tasks.splice(index, 1)
     this.markDirty()
   }

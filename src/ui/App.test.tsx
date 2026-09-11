@@ -472,3 +472,56 @@ describe('stats page', () => {
     expect(root.querySelector('.add-task')).not.toBeNull()
   })
 })
+
+describe('smart filters', () => {
+  it('narrows the list with a query', async () => {
+    const { root } = await mount('a +house @phone\nb +house\nc @phone\n')
+    fireEvent.change(root.querySelector('.search')!, { target: { value: '+house & !@phone' } })
+    const rows = [...root.querySelectorAll('.task__text')].map((el) => el.textContent)
+    expect(rows).toEqual(['b'])
+  })
+
+  it('shows a parse error and keeps the previous list', async () => {
+    const { root } = await mount('a +house\nb +work\n')
+    const search = root.querySelector('.search')!
+    fireEvent.change(search, { target: { value: '+house' } })
+    fireEvent.change(search, { target: { value: '+house |' } })
+    expect(root.querySelector('.query-error')?.textContent).toBe('Missing a term at the end')
+    expect(root.querySelectorAll('.task')).toHaveLength(1)
+    expect(root.querySelector('.save-filter')).toBeNull()
+  })
+
+  it('saves the query as a filter and lists it in the sidebar', async () => {
+    const { root, app } = await mount('a +house\nb +work\n')
+    expect(root.querySelector('.saved')).toBeNull()
+    fireEvent.change(root.querySelector('.search')!, { target: { value: '+house' } })
+    fireEvent.click(root.querySelector('.save-filter')!)
+    fireEvent.change(root.querySelector('.save-filter__name')!, { target: { value: 'House' } })
+    fireEvent.submit(root.querySelector('.save-filter__form')!)
+    await waitFor(() => expect(app.state.filters).toEqual([{ name: 'House', query: '+house' }]))
+    expect(root.querySelector('.save-filter__form')).toBeNull()
+    expect([...root.querySelectorAll('.saved .view-btn')].map((b) => b.textContent)).toEqual(['House'])
+  })
+
+  it('applies a saved filter and clears the chips', async () => {
+    const { root, app } = await mount('a +house\nb +work\n')
+    await app.saveFilter('Work', '+work')
+    act(() => {
+      app.setFilter({ projects: ['house'], dueView: 'today' })
+      app.showPage('stats')
+    })
+    fireEvent.click([...root.querySelectorAll('.saved .view-btn')][0]!)
+    expect(app.state.page).toBe('tasks')
+    expect(app.state.filter).toEqual({ ...app.state.filter, projects: [], dueView: 'all', search: '+work' })
+    expect(root.querySelector('.saved .view-btn--active')?.textContent).toBe('Work')
+    expect([...root.querySelectorAll('.task__text')].map((el) => el.textContent)).toEqual(['b'])
+  })
+
+  it('deletes a saved filter', async () => {
+    const { root, app } = await mount('a\n')
+    await app.saveFilter('Work', '+work')
+    fireEvent.click(root.querySelector('[aria-label="Delete Work"]')!)
+    await waitFor(() => expect(app.state.filters).toEqual([]))
+    expect(root.querySelector('.saved')).toBeNull()
+  })
+})

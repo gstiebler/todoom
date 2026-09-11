@@ -389,6 +389,21 @@ describe('task modal', () => {
     expect(app.state.tasks[0]?.pairs['due']).toBe(TODAY)
   })
 
+  it('sets a deadline from the sidebar and shows it on the row', async () => {
+    const { root, app } = await mount('File taxes\n')
+    const modal = open(root, 'File taxes')
+    fireEvent.click(modal.querySelector('.field--deadline .field__value')!)
+    expect(modal.querySelector('.field--deadline .repeats')).toBeNull()
+    fireEvent.click(modal.querySelector('.field--deadline .quick-date')!)
+    expect(app.state.tasks[0]?.pairs['deadline']).toBe(TODAY)
+    expect(modal.querySelector('.field--deadline .field__value')?.textContent).toBe('Today')
+
+    fireEvent.keyDown(modal, { key: 'Escape' })
+    const chip = root.querySelector('.task__deadline')!
+    expect(chip.textContent).toBe('Today')
+    expect(chip.className).toContain('deadline--today')
+  })
+
   it('toggles a label from the sidebar', async () => {
     const { root, app } = await mount('Buy milk\nCall plumber +house\n')
     const modal = open(root)

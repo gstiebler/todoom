@@ -95,3 +95,17 @@ test('makes a task wait on another', async ({ page }) => {
     .click()
   await expect(row).not.toHaveClass(/task--blocked/)
 })
+
+test('sets a deadline on a task', async ({ page }) => {
+  await page.goto(PAGE)
+  await page.locator('.task', { hasText: 'Buy milk' }).locator('.task__text').click()
+  const modal = page.locator('.task-modal')
+  await modal.locator('.field--deadline .field__value').click()
+  await modal.locator('.field--deadline .quick-date', { hasText: 'Today' }).click()
+  await expect(modal.locator('.field--deadline .field__value')).toHaveText('Today')
+  await modal.locator('.task-modal__close').click()
+
+  const row = page.locator('.task', { hasText: 'Buy milk' })
+  await expect(row.locator('.task__deadline')).toHaveText('Today')
+  await expect(row.locator('.task__deadline')).toHaveClass(/deadline--today/)
+})

@@ -18,12 +18,15 @@ export function DatePopover({
   rec,
   onDue,
   onRec,
+  withRepeat = true,
 }: {
   today: string
   due: string | null
   rec: string | null
   onDue: (date: string | null) => void
   onRec: (rec: string | null) => void
+  /** A deadline is a date without a repeat row. */
+  withRepeat?: boolean
 }) {
   const [[year, month], setMonth] = useState<[number, number]>(() => [
     Number(today.slice(0, 4)),
@@ -100,18 +103,20 @@ export function DatePopover({
       </div>
 
       <div className="popover__footer">
-        <div className="repeats">
-          {REPEATS.map(([value, label]) => (
-            <button
-              type="button"
-              key={value}
-              className={rec === value ? 'repeat repeat--active' : 'repeat'}
-              onClick={() => onRec(rec === value ? null : value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {withRepeat && (
+          <div className="repeats">
+            {REPEATS.map(([value, label]) => (
+              <button
+                type="button"
+                key={value}
+                className={rec === value ? 'repeat repeat--active' : 'repeat'}
+                onClick={() => onRec(rec === value ? null : value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <button
           type="button"
           className="popover__clear"

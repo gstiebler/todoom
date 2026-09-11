@@ -11,30 +11,48 @@ function shortDate(iso: string, today: string): string {
   return year === today.slice(0, 4) ? `${day} ${month}` : `${day} ${month} ${year}`
 }
 
-export function describeTask(task: Task, today: string): { classes: string[]; dueLabel: string } {
+type Urgency = 'overdue' | 'today' | 'soon' | ''
+
+/** How a date reads and how pressing it is, relative to today. */
+function describeDate(iso: string, today: string): { label: string; urgency: Urgency } {
+  const delta = daysBetween(today, iso)
+  if (delta < 0) return { label: shortDate(iso, today), urgency: 'overdue' }
+  if (delta === 0) return { label: 'Today', urgency: 'today' }
+  if (delta === 1) return { label: 'Tomorrow', urgency: 'soon' }
+  // Inside the coming week a weekday name places the task better than a date.
+  if (delta < 7) return { label: WEEKDAY_NAMES[weekday(iso)] ?? shortDate(iso, today), urgency: 'soon' }
+  return { label: shortDate(iso, today), urgency: '' }
+}
+
+export interface TaskDescription {
+  classes: string[]
+  dueLabel: string
+  deadlineLabel: string
+  /** The class carrying the deadline's own urgency color, if any. */
+  deadlineClass: string
+}
+
+export function describeTask(task: Task, today: string): TaskDescription {
   const classes: string[] = ['task']
   if (task.completed) classes.push('task--done')
 
+  let dueLabel = ''
   const due = task.pairs['due']
-  if (!due || !isValidDate(due)) return { classes, dueLabel: '' }
+  if (due && isValidDate(due)) {
+    const { label, urgency } = describeDate(due, today)
+    dueLabel = label
+    if (!task.completed && urgency) classes.push(`task--${urgency}`)
+  }
 
-  const delta = daysBetween(today, due)
-  if (!task.completed && delta < 0) {
-    classes.push('task--overdue')
-    return { classes, dueLabel: shortDate(due, today) }
+  // The deadline colors only its own chip: views and sort stay on the due date.
+  let deadlineLabel = ''
+  let deadlineClass = ''
+  const deadline = task.pairs['deadline']
+  if (deadline && isValidDate(deadline)) {
+    const { label, urgency } = describeDate(deadline, today)
+    deadlineLabel = label
+    if (!task.completed && urgency) deadlineClass = `deadline--${urgency}`
   }
-  if (!task.completed && delta === 0) {
-    classes.push('task--today')
-    return { classes, dueLabel: 'Today' }
-  }
-  if (!task.completed && delta === 1) {
-    classes.push('task--soon')
-    return { classes, dueLabel: 'Tomorrow' }
-  }
-  // Inside the coming week a weekday name places the task better than a date.
-  if (!task.completed && delta < 7) {
-    classes.push('task--soon')
-    return { classes, dueLabel: WEEKDAY_NAMES[weekday(due)] ?? shortDate(due, today) }
-  }
-  return { classes, dueLabel: shortDate(due, today) }
+
+  return { classes, dueLabel, deadlineLabel, deadlineClass }
 }

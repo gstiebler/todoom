@@ -80,6 +80,15 @@ export function setDue(task: Task, due: string | null): Task {
   })
 }
 
+export function setDeadline(task: Task, deadline: string | null): Task {
+  return reparse({
+    ...task,
+    description: deadline
+      ? setPairValue(task.description, 'deadline', deadline)
+      : removePair(task.description, 'deadline'),
+  })
+}
+
 export function setRec(task: Task, rec: string | null): Task {
   return reparse({
     ...task,

@@ -7,7 +7,7 @@ import { AttachmentsPopover } from './AttachmentsPopover'
 import { TaskModal } from './TaskModal'
 import { taskTitle } from '../core/title'
 import { blockerOf } from '../core/deps'
-import { CalendarIcon, PaperclipIcon, RepeatIcon, TagIcon } from './icons'
+import { CalendarIcon, FlagIcon, PaperclipIcon, RepeatIcon, TagIcon } from './icons'
 
 function Tag({ label, kind }: { label: string; kind: 'project' | 'context' }) {
   return (
@@ -30,7 +30,7 @@ const TaskRow = observer(function TaskRow({
   const [open, setOpen] = useState(false)
   const [attachOpen, setAttachOpen] = useState(false)
   const index = app.indexOf(task)
-  const { classes, dueLabel } = describeTask(task, today)
+  const { classes, dueLabel, deadlineLabel, deadlineClass } = describeTask(task, today)
   const rec = task.pairs['rec']
   const blocker = blockerOf(task, app.state.tasks)
   if (blocker) classes.push('task--blocked')
@@ -53,7 +53,7 @@ const TaskRow = observer(function TaskRow({
 
         {blocker && <p className="task__blocked">Waiting on {taskTitle(blocker)}</p>}
 
-        {(dueLabel || rec || task.projects.length > 0 || task.contexts.length > 0) && (
+        {(dueLabel || deadlineLabel || rec || task.projects.length > 0 || task.contexts.length > 0) && (
           <div className="task__meta">
             {dueLabel && (
               <span className="task__due">
@@ -66,6 +66,12 @@ const TaskRow = observer(function TaskRow({
               <span className="task__due">
                 <RepeatIcon />
                 {rec}
+              </span>
+            )}
+            {deadlineLabel && (
+              <span className={`task__deadline ${deadlineClass}`.trim()}>
+                <FlagIcon />
+                {deadlineLabel}
               </span>
             )}
             {task.projects.map((project) => (

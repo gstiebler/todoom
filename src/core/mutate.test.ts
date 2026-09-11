@@ -9,6 +9,7 @@ import {
   removeAttachment,
   setNote,
   setDue,
+  setDeadline,
   setRec,
   setPriority,
   toggleLabel,
@@ -155,6 +156,12 @@ describe('field mutations', () => {
 
   it('clears a due date', () => {
     expect(setDue(parseLine('Buy milk due:2026-09-12'), null).raw).toBe('Buy milk')
+  })
+
+  it('sets and clears a deadline', () => {
+    const hard = setDeadline(parseLine('Buy milk'), '2026-09-20')
+    expect(hard.raw).toBe('Buy milk deadline:2026-09-20')
+    expect(setDeadline(hard, null).raw).toBe('Buy milk')
   })
 
   it('sets and clears a recurrence', () => {

@@ -43,6 +43,23 @@ describe('describeTask', () => {
     expect(describeTask(parseLine('Buy milk due:soon'), TODAY).dueLabel).toBe('')
   })
 
+  it('labels and colors a deadline on its own', () => {
+    const d = describeTask(parseLine('File taxes deadline:2026-09-10'), TODAY)
+    expect(d.deadlineLabel).toBe('Today')
+    expect(d.deadlineClass).toBe('deadline--today')
+    expect(d.classes).not.toContain('task--today')
+  })
+
+  it('marks a missed deadline', () => {
+    const d = describeTask(parseLine('File taxes deadline:2026-09-01'), TODAY)
+    expect(d.deadlineLabel).toBe('1 Sep')
+    expect(d.deadlineClass).toBe('deadline--overdue')
+  })
+
+  it('has no deadline label without one', () => {
+    expect(describeTask(parseLine('Buy milk'), TODAY).deadlineLabel).toBe('')
+  })
+
   it('marks a completed task', () => {
     const d = describeTask(parseLine('x 2026-09-09 Buy milk'), TODAY)
     expect(d.classes).toContain('task--done')

@@ -554,7 +554,7 @@ button:hover { border-color: var(--accent); }
   color: var(--muted);
 }
 
-.task__due, .tag {
+.task__due, .task__deadline, .tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -566,6 +566,10 @@ button:hover { border-color: var(--accent); }
 .task--overdue .task__due { color: var(--overdue); }
 .task--today .task__due { color: var(--today); }
 .task--soon .task__due { color: var(--soon); }
+
+.deadline--overdue { color: var(--overdue); }
+.deadline--today { color: var(--today); }
+.deadline--soon { color: var(--soon); }
 
 .task__note {
   margin: 2px 0 0;

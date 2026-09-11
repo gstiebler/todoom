@@ -2,7 +2,7 @@ import { observer } from 'mobx-react-lite'
 import { useEffect, useState } from 'react'
 import type { Task } from '../core/types'
 import type { TodoomApp } from '../app/state'
-import { setDue, setNote, setPriority, setRec, toggleLabel } from '../core/mutate'
+import { setDeadline, setDue, setNote, setPriority, setRec, toggleLabel } from '../core/mutate'
 import { setTitle, taskTitle } from '../core/title'
 import { collectContexts, collectProjects } from '../core/query'
 import { describeTask } from './describeTask'
@@ -11,11 +11,11 @@ import { DatePopover } from './DatePopover'
 import { LabelsPopover } from './LabelsPopover'
 import { DependencyPopover } from './DependencyPopover'
 import { blockerOf, wouldCycle } from '../core/deps'
-import { CalendarIcon, RepeatIcon, TagIcon } from './icons'
+import { CalendarIcon, FlagIcon, RepeatIcon, TagIcon } from './icons'
 
 const PRIORITIES = ['A', 'B', 'C', 'D']
 
-type Field = 'date' | 'priority' | 'labels' | 'deps' | null
+type Field = 'date' | 'deadline' | 'priority' | 'labels' | 'deps' | null
 
 /** The task on its own: the title and description on the left, its fields on the right. */
 export const TaskModal = observer(function TaskModal({
@@ -50,7 +50,7 @@ export const TaskModal = observer(function TaskModal({
   const index = app.indexOf(task)
   const change = (fn: (task: Task) => Task) => app.updateTask(index, fn)
   const toggle = (next: Field) => setField((current) => (current === next ? null : next))
-  const { dueLabel } = describeTask(task, today)
+  const { dueLabel, deadlineLabel, deadlineClass } = describeTask(task, today)
   const rec = task.pairs['rec']
   const labels = [...task.projects.map((p) => `+${p}`), ...task.contexts.map((c) => `@${c}`)]
   const available = [
@@ -129,6 +129,27 @@ export const TaskModal = observer(function TaskModal({
                   rec={rec ?? null}
                   onDue={(due) => change((current) => setDue(current, due))}
                   onRec={(next) => change((current) => setRec(current, next))}
+                />
+              )}
+            </section>
+
+            <section className="field field--deadline">
+              <h3 className="field__label">Deadline</h3>
+              <button
+                className={`field__value ${deadlineClass}`.trim()}
+                onClick={() => toggle('deadline')}
+              >
+                <FlagIcon />
+                {deadlineLabel || 'No deadline'}
+              </button>
+              {field === 'deadline' && (
+                <DatePopover
+                  today={today}
+                  due={task.pairs['deadline'] ?? null}
+                  rec={null}
+                  withRepeat={false}
+                  onDue={(deadline) => change((current) => setDeadline(current, deadline))}
+                  onRec={() => {}}
                 />
               )}
             </section>

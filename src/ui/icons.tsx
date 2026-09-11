@@ -46,3 +46,12 @@ export function PaperclipIcon() {
     </svg>
   )
 }
+
+export function FlagIcon() {
+  return (
+    <svg {...props}>
+      <path d="M5 21V4" />
+      <path d="M5 4h13l-2.5 4L18 12H5" />
+    </svg>
+  )
+}

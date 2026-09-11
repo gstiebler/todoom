@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { TodoomApp } from './state'
 import { FakeStore } from '../drive/fakeStore'
 import { formatTask } from '../core/format'
+import { FakeModel } from './fakeModel'
 
 const TODAY = '2026-09-10'
 
@@ -13,6 +14,18 @@ async function setup(seed = 'Buy milk\n') {
   const app = new TodoomApp(store, () => TODAY)
   await app.load(workspace)
   return { store, workspace, app }
+}
+
+async function waitFor(check: () => void): Promise<void> {
+  for (let i = 0; i < 50; i += 1) {
+    try {
+      check()
+      return
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    }
+  }
+  check()
 }
 
 describe('load', () => {
@@ -376,5 +389,70 @@ describe('saved filters', () => {
     await expect(app.saveFilter('Work: urgent', '+work')).rejects.toThrow(
       'Filter names cannot contain ": "',
     )
+  })
+})
+
+describe('translate', () => {
+  async function setupModel(model: FakeModel) {
+    const store = new FakeStore({ 'todo.txt': 'a +home @phone\nb +work\n' })
+    await store.signIn()
+    const app = new TodoomApp(store, () => TODAY, model)
+    await app.load(await store.workspace())
+    return app
+  }
+
+  it('reports the availability once asked', async () => {
+    const app = await setupModel(new FakeModel('downloadable'))
+    await waitFor(() => expect(app.state.model).toBe('downloadable'))
+  })
+
+  it('puts a valid answer into the search', async () => {
+    const model = new FakeModel('available', ['+home & due:today'])
+    const app = await setupModel(model)
+    await app.translate('home things for today')
+    expect(app.state.filter.search).toBe('+home & due:today')
+    expect(model.prompts).toEqual(['home things for today'])
+    expect(model.systemPrompt).toContain('Projects: +home +work')
+    expect(model.systemPrompt).toContain('Contexts: @phone')
+  })
+
+  it('strips fences and keeps the first line', async () => {
+    const app = await setupModel(new FakeModel('available', ['`+home`\nsecond line']))
+    await app.translate('home')
+    expect(app.state.filter.search).toBe('+home')
+  })
+
+  it('retries once with the parse error', async () => {
+    const model = new FakeModel('available', ['+home |', '+home'])
+    const app = await setupModel(model)
+    await app.translate('home')
+    expect(app.state.filter.search).toBe('+home')
+    expect(model.prompts[1]).toContain('"+home |"')
+    expect(model.prompts[1]).toContain('Missing a term at the end')
+  })
+
+  it('gives up after the second bad answer', async () => {
+    const app = await setupModel(new FakeModel('available', ['+home |', 'done |']))
+    await expect(app.translate('home')).rejects.toThrow('Missing a term at the end')
+    expect(app.state.filter.search).toBe('')
+  })
+
+  it('reports download progress and reuses the session', async () => {
+    const model = new FakeModel('available', ['+home', 'done'], [0.5])
+    const app = await setupModel(model)
+    const seen: Array<number | null> = []
+    reaction(() => app.state.modelProgress, (p) => seen.push(p))
+    await app.translate('home')
+    await app.translate('finished')
+    expect(seen).toEqual([0, 0.5, null])
+    expect(model.sessions).toBe(1)
+  })
+
+  it('clears the progress when the download fails', async () => {
+    const model = new FakeModel()
+    model.failCreate = new Error('declined')
+    const app = await setupModel(model)
+    await expect(app.translate('home')).rejects.toThrow('declined')
+    expect(app.state.modelProgress).toBeNull()
   })
 })

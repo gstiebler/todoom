@@ -21,7 +21,10 @@ export class FakeModel implements LanguageModelAdapter {
     if (this.failCreate) throw this.failCreate
     this.sessions += 1
     this.systemPrompt = system
-    for (const fraction of this.progress) onProgress(fraction)
+    for (const fraction of this.progress) {
+      await Promise.resolve() // downloads report progress asynchronously
+      onProgress(fraction)
+    }
     return {
       prompt: async (text) => {
         this.prompts.push(text)

@@ -7,17 +7,26 @@ import { parseFile, parseLine } from '../core/parse'
 import { formatFile } from '../core/format'
 import { complete, uncomplete, createTask, addAttachment, removeAttachment } from '../core/mutate'
 import { nextOccurrence } from '../core/recurrence'
-import { emptyFilter, filterTasks, sortTasks } from '../core/query'
+import { emptyFilter, filterTasks, sortTasks, collectProjects, collectContexts } from '../core/query'
 import { splitCompleted } from '../core/archive'
 import { ensureId, setDependency } from '../core/deps'
 import { parseQuery } from '../core/filterQuery'
 import type { SavedFilter } from '../core/filters'
 import { formatFilters, parseFilters } from '../core/filters'
+import { buildPrompt, retryPrompt } from '../core/nlPrompt'
+import type { Availability, LanguageModelAdapter, ModelSession } from './languageModel'
+import { chromeModel } from './languageModel'
 
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
 function isErrorState(state: AppState): boolean {
   return state.saveState === 'error'
+}
+
+/** The model is asked for one line; this forgives fences or quotes around it. */
+function firstLine(answer: string): string {
+  const line = answer.trim().split('\n')[0] ?? ''
+  return line.replace(/^[`"']+|[`"']+$/g, '').trim()
 }
 
 export interface AppState {
@@ -31,6 +40,10 @@ export interface AppState {
   saveState: SaveState
   error: string | null
   loadedModifiedTime: string | null
+  /** Whether the on-device model can be used; 'unknown' until Chrome answers. */
+  model: Availability | 'unknown'
+  /** Download fraction while the model session is being created, else null. */
+  modelProgress: number | null
 }
 
 export class TodoomApp {
@@ -43,6 +56,8 @@ export class TodoomApp {
     saveState: 'idle',
     error: null,
     loadedModifiedTime: null,
+    model: 'unknown',
+    modelProgress: null,
   }
 
   /** Every file in the Todoom folder we know the name and link of. */
@@ -52,15 +67,26 @@ export class TodoomApp {
   private revision = 0
   // The last search that parsed, so a half-typed query never empties the list.
   private validSearch = ''
+  private session: ModelSession | null = null
 
   constructor(
     private store: TodoStore,
     private today: () => string,
+    private model: LanguageModelAdapter = chromeModel,
   ) {
-    // The Drive client and the clock are collaborators, not state; leave them
-    // as they are. Everything else is observable, so mutating `state` in place
-    // is what tells the UI something happened.
-    makeAutoObservable<TodoomApp, 'store' | 'today'>(this, { store: false, today: false })
+    // The Drive client, the clock and the model are collaborators, not state;
+    // leave them as they are. Everything else is observable, so mutating
+    // `state` in place is what tells the UI something happened.
+    makeAutoObservable<TodoomApp, 'store' | 'today' | 'model'>(this, {
+      store: false,
+      today: false,
+      model: false,
+    })
+    void this.model.availability().then((availability) => {
+      runInAction(() => {
+        this.state.model = availability
+      })
+    })
   }
 
   private markDirty(): void {
@@ -249,6 +275,44 @@ export class TodoomApp {
   visibleTasks(): Task[] {
     const filter = { ...this.state.filter, search: this.validSearch }
     return sortTasks(filterTasks(this.state.tasks, filter, this.today()))
+  }
+
+  /** Asks the on-device model for a query and puts it in the search box. */
+  async translate(description: string): Promise<void> {
+    const session = await this.modelSession()
+    let query = firstLine(await session.prompt(description))
+    try {
+      parseQuery(query)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      query = firstLine(await session.prompt(retryPrompt(query, message)))
+      parseQuery(query)
+    }
+    this.setFilter({ search: query })
+  }
+
+  private async modelSession(): Promise<ModelSession> {
+    if (this.session) return this.session
+    const vocab = {
+      projects: collectProjects(this.state.tasks),
+      contexts: collectContexts(this.state.tasks),
+    }
+    this.state.modelProgress = 0
+    try {
+      const session = await this.model.create(buildPrompt(vocab, this.today()), (fraction) => {
+        runInAction(() => {
+          this.state.modelProgress = fraction
+        })
+      })
+      runInAction(() => {
+        this.session = session
+      })
+      return session
+    } finally {
+      runInAction(() => {
+        this.state.modelProgress = null
+      })
+    }
   }
 
   indexOf(task: Task): number {

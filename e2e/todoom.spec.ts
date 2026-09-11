@@ -109,3 +109,21 @@ test('sets a deadline on a task', async ({ page }) => {
   await expect(row.locator('.task__deadline')).toHaveText('Today')
   await expect(row.locator('.task__deadline')).toHaveClass(/deadline--today/)
 })
+
+test('saves a search as a filter and applies it', async ({ page }) => {
+  await page.goto(PAGE)
+  await page.fill('.search', '+house & (A)')
+  await expect(page.locator('.task')).toHaveCount(1)
+  await page.click('.save-filter')
+  await page.fill('.save-filter__name', 'Urgent house')
+  await page.keyboard.press('Enter')
+  const saved = page.locator('.saved .view-btn', { hasText: 'Urgent house' })
+  await expect(saved).toHaveClass(/view-btn--active/)
+
+  await page.locator('.view-btn', { hasText: 'All' }).click()
+  await page.fill('.search', '')
+  await expect(page.locator('.task')).toHaveCount(2)
+  await saved.click()
+  await expect(page.locator('.search')).toHaveValue('+house & (A)')
+  await expect(page.locator('.task')).toHaveCount(1)
+})

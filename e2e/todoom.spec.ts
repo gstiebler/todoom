@@ -150,3 +150,16 @@ test('shows a saved filter as a column', async ({ page }) => {
   await expect(page.locator('.column')).toHaveCount(1)
   await expect(page.locator('.column .task')).toHaveCount(1)
 })
+
+test('shows a dated task on the gantt chart', async ({ page }) => {
+  await page.goto(PAGE)
+  await page.locator('.task', { hasText: 'Buy milk' }).locator('.task__text').click()
+  const modal = page.locator('.task-modal')
+  await modal.locator('.field--date .field__value').click()
+  await modal.locator('.field--date .quick-date', { hasText: 'Tomorrow' }).click()
+  await modal.locator('.task-modal__close').click()
+
+  await page.locator('.view-btn', { hasText: 'Gantt' }).click()
+  await expect(page.locator('.gantt__bar')).toHaveCount(1)
+  await expect(page.locator('.gantt__row')).toContainText('Buy milk')
+})

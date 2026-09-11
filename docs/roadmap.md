@@ -3,10 +3,6 @@
 Planned features, not yet designed. Each entry is a sketch of intent, not a
 spec: brainstorm one before building it.
 
-## Gantt chart
-
-A timeline view of tasks against their dates.
-
 ## Search as modal
 
 Open the search in a modal (a command-palette style box) instead of, or in

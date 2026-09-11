@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react'
 import type { DueView } from '../core/query'
 import type { TodoomApp } from '../app/state'
 import { applyTheme, loadTheme } from './theme'
-import { collectProjects, collectContexts, collectPriorities, emptyFilter } from '../core/query'
+import { collectPriorities, countByProject, countByContext, emptyFilter } from '../core/query'
 import { SaveFilter } from './SaveFilter'
 import { AskFilter } from './AskFilter'
+import { LabelSection } from './LabelSection'
 
 const STATUS_TEXT: Record<string, string> = {
   idle: '',
@@ -30,6 +31,14 @@ function toggleIn(list: string[], value: string): string[] {
 // the filter it holds becomes impossible to clear from the UI.
 function withSelected(collected: string[], selected: string[]): string[] {
   return [...new Set([...collected, ...selected])].sort()
+}
+
+// Same rule as withSelected, for the counted rows: a selected label no task
+// carries still gets a row (count 0) so it can be unselected.
+function withCounts(counts: Map<string, number>, selected: string[]): Map<string, number> {
+  const all = new Map(counts)
+  for (const value of selected) if (!all.has(value)) all.set(value, 0)
+  return new Map([...all].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
 }
 
 function Chips({
@@ -204,17 +213,19 @@ export const Sidebar = observer(function Sidebar({
         selected={filter.priorities}
         onToggle={(value) => app.setFilter({ priorities: toggleIn(filter.priorities, value) })}
       />
-      <Chips
+      <LabelSection
         heading="Projects"
-        values={withSelected(collectProjects(tasks), filter.projects)}
-        label={(value) => `+${value}`}
+        storageKey="todoom.labels.projects"
+        prefix="+"
+        counts={withCounts(countByProject(tasks), filter.projects)}
         selected={filter.projects}
         onToggle={(value) => app.setFilter({ projects: toggleIn(filter.projects, value) })}
       />
-      <Chips
+      <LabelSection
         heading="Contexts"
-        values={withSelected(collectContexts(tasks), filter.contexts)}
-        label={(value) => `@${value}`}
+        storageKey="todoom.labels.contexts"
+        prefix="@"
+        counts={withCounts(countByContext(tasks), filter.contexts)}
         selected={filter.contexts}
         onToggle={(value) => app.setFilter({ contexts: toggleIn(filter.contexts, value) })}
       />

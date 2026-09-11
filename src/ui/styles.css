@@ -492,6 +492,39 @@ button:hover { border-color: var(--accent); }
 
 .chip { font-size: 13px; padding: 4px 9px; }
 
+.labels { display: flex; flex-direction: column; gap: 2px; }
+.labels__heading {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+}
+.labels__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  background: none;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+}
+.labels__row:hover { background: var(--surface); }
+.labels__row--active { background: var(--accent); color: #fff; }
+.labels__row--active .labels__count { color: inherit; }
+.labels__count { color: var(--muted); font-size: 12px; }
+
 .archive-btn { margin-top: 4px; font-size: 14px; }
 
 .search { width: 100%; }

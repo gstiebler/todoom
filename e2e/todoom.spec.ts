@@ -29,9 +29,10 @@ test('completes a task and hides it', async ({ page }) => {
   await expect(page.locator('.task')).toHaveCount(1)
 })
 
-test('filters by project chip', async ({ page }) => {
+test('filters by project row', async ({ page }) => {
   await page.goto(PAGE)
-  await page.locator('.chip', { hasText: '+house' }).click()
+  await page.locator('.labels__heading', { hasText: 'Projects' }).click()
+  await page.locator('.labels__row', { hasText: '+house' }).click()
   await expect(page.locator('.task')).toHaveCount(1)
   await expect(page.locator('.task').first()).toContainText('Call plumber')
 })

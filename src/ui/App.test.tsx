@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { App } from './App'
 import { TodoomApp } from '../app/state'
@@ -29,7 +29,19 @@ function chip(root: HTMLElement, name: string): Element {
 }
 
 function labels(root: HTMLElement): string[] {
-  return [...root.querySelectorAll('.chip')].map((c) => c.textContent ?? '')
+  return [...root.querySelectorAll('.chip, .labels__label')].map((c) => c.textContent ?? '')
+}
+
+function heading(root: HTMLElement, name: string): Element {
+  return [...root.querySelectorAll('.labels__heading')].find((h) =>
+    h.textContent?.includes(name),
+  )!
+}
+
+function row(root: HTMLElement, label: string): Element {
+  return [...root.querySelectorAll('.labels__row')].find(
+    (r) => r.querySelector('.labels__label')?.textContent === label,
+  )!
 }
 
 afterEach(cleanup)
@@ -150,10 +162,10 @@ describe('App', () => {
     expect(root.querySelector('.task-modal')).not.toBeNull()
   })
 
-  it('filters by project when a chip is clicked', async () => {
+  it('filters by project when a label row is clicked', async () => {
     const { root, app } = await mount('a +house\nb +work\n')
-    const chips = [...root.querySelectorAll<HTMLButtonElement>('.chip')]
-    fireEvent.click(chips.find((c) => c.textContent === '+house')!)
+    fireEvent.click(heading(root, 'Projects'))
+    fireEvent.click(row(root, '+house'))
     expect(app.state.filter.projects).toEqual(['house'])
   })
 
@@ -212,6 +224,72 @@ describe('stranded filter chips', () => {
   })
 })
 
+describe('label sections', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => localStorage.clear())
+
+  it('starts collapsed with a glyph and no rows', async () => {
+    const { root } = await mount('a +house @phone\n')
+    expect(heading(root, 'Projects').textContent).toBe('▸ Projects')
+    expect(heading(root, 'Contexts').textContent).toBe('▸ Contexts')
+    expect(root.querySelectorAll('.labels__row')).toHaveLength(0)
+  })
+
+  it('expands to rows with open-task counts', async () => {
+    const { root } = await mount('a +house\nb +house\nx 2026-09-09 c +old\n')
+    fireEvent.click(heading(root, 'Projects'))
+    expect(heading(root, 'Projects').textContent).toBe('▾ Projects')
+    const rows = [...root.querySelectorAll('.labels__row')].map((r) => [
+      r.querySelector('.labels__label')?.textContent,
+      r.querySelector('.labels__count')?.textContent,
+    ])
+    expect(rows).toEqual([
+      ['+house', '2'],
+      ['+old', '0'],
+    ])
+  })
+
+  it('marks the active row and keeps the section open while selected', async () => {
+    const { root, app } = await mount('a +house\nb +work\n')
+    act(() => app.setFilter({ projects: ['house'] }))
+    expect(row(root, '+house').classList.contains('labels__row--active')).toBe(true)
+    expect(heading(root, 'Projects').textContent).toBe('▾ Projects (1)')
+    fireEvent.click(heading(root, 'Projects'))
+    expect(heading(root, 'Projects').textContent).toBe('▾ Projects')
+    fireEvent.click(heading(root, 'Projects'))
+    expect(root.querySelectorAll('.labels__row')).toHaveLength(2)
+    expect(heading(root, 'Projects').textContent).toBe('▾ Projects (1)')
+    fireEvent.click(row(root, '+house'))
+    expect(root.querySelectorAll('.labels__row')).toHaveLength(0)
+    expect(heading(root, 'Projects').textContent).toBe('▸ Projects')
+  })
+
+  it('shows how many selections hold a collapsed section open', async () => {
+    const { root, app } = await mount('a +house\nb +work\n')
+    act(() => app.setFilter({ projects: ['house', 'work'] }))
+    fireEvent.click(heading(root, 'Projects'))
+    fireEvent.click(heading(root, 'Projects'))
+    act(() => app.setFilter({ projects: ['house'] }))
+    expect(heading(root, 'Projects').textContent).toBe('▾ Projects (1)')
+  })
+
+  it('remembers the open state across a remount', async () => {
+    const first = await mount('a @phone\n')
+    fireEvent.click(heading(first.root, 'Contexts'))
+    expect(localStorage.getItem('todoom.labels.contexts')).toBe('open')
+    cleanup()
+    const second = await mount('a @phone\n')
+    expect(second.root.querySelectorAll('.labels__row')).toHaveLength(1)
+    fireEvent.click(heading(second.root, 'Contexts'))
+    expect(localStorage.getItem('todoom.labels.contexts')).toBeNull()
+  })
+
+  it('hides a section that has no labels', async () => {
+    const { root } = await mount('a +house\n')
+    expect(heading(root, 'Contexts')).toBeUndefined()
+  })
+})
+
 describe('sidebar layout', () => {
   it('keeps the completed toggle out of the exclusive view group', async () => {
     const { root } = await mount('Buy milk\n')
@@ -226,7 +304,7 @@ describe('sidebar layout', () => {
   it('puts the controls in the sidebar and the tasks in the main pane', async () => {
     const { root } = await mount('Buy milk +house\n')
     expect(root.querySelector('.sidebar .search')).not.toBeNull()
-    expect(root.querySelector('.sidebar .chip')?.textContent).toBe('+house')
+    expect(root.querySelector('.sidebar .labels__heading')?.textContent).toBe('▸ Projects')
     expect(root.querySelector('.sidebar .archive-btn')).not.toBeNull()
     expect(root.querySelector('.main .add-task')).not.toBeNull()
     expect(root.querySelector('.main .task-list')).not.toBeNull()

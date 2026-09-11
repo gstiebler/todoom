@@ -1,0 +1,218 @@
+export type Locale = 'en' | 'pt-BR'
+export const LOCALES: Locale[] = ['en', 'pt-BR']
+
+const KEY = 'todoom.locale'
+
+function isLocale(value: string | null): value is Locale {
+  return LOCALES.some((locale) => locale === value)
+}
+
+/** A stored choice wins; otherwise a Portuguese browser gets pt-BR and everyone else English. */
+export function loadLocale(): Locale {
+  const stored = localStorage.getItem(KEY)
+  if (isLocale(stored)) return stored
+  return navigator.language.startsWith('pt') ? 'pt-BR' : 'en'
+}
+
+export function saveLocale(locale: Locale): void {
+  localStorage.setItem(KEY, locale)
+}
+
+// Keys are stable identifiers; the English text is a value like any other.
+const en = {
+  'common.description': 'Description',
+  'common.attachments': 'Attachments',
+  'common.priority': 'Priority',
+  'common.labels': 'Labels',
+  'common.none': 'None',
+  'common.cancel': 'Cancel',
+  'common.retry': 'Retry',
+  'common.close': 'Close',
+  'common.search': 'Search',
+  'common.searchPlaceholder': 'Search or filter…',
+  'common.dismiss': 'Dismiss',
+  'common.remove': 'Remove',
+  'common.save': 'Save',
+  'common.delete': 'Delete',
+  'addTask.aria': 'Add task',
+  'addTask.textPlaceholder': 'Call plumber +house @phone',
+  'addTask.attachChip': 'Attach',
+  'addTask.openButton': '+ Add task',
+  'askFilter.aria': 'Describe a filter',
+  'askFilter.placeholder': 'Describe a filter…',
+  'askFilter.downloading': 'Downloading model… {percent}%',
+  'askFilter.thinking': 'Thinking…',
+  'attachments.trashConfirm': 'Move {name} to the Drive trash?',
+  'attachments.empty': 'No files yet.',
+  'attachments.addFile': 'Add file',
+  'attachments.workingAria': 'Working',
+  'columns.empty': 'Tick a saved filter in the sidebar to show it here.',
+  'date.fieldLabel': 'Date',
+  'date.previousMonth': 'Previous month',
+  'date.nextMonth': 'Next month',
+  'date.clear': 'Clear',
+  'date.repeat.daily': 'Daily',
+  'date.repeat.weekly': 'Weekly',
+  'date.repeat.monthly': 'Monthly',
+  'date.repeat.yearly': 'Yearly',
+  'date.today': 'Today',
+  'date.tomorrow': 'Tomorrow',
+  'quick.weekend': 'This weekend',
+  'quick.nextWeek': 'Next week',
+  'deps.searchPlaceholder': 'Find a task',
+  'deps.empty': 'No open task to wait on.',
+  'gantt.empty': 'Give a task a due date or a deadline to see it here.',
+  'labels.emptyHint': 'No labels yet. Type +project or @context instead.',
+  'labels.typePlaceholder': 'Type a label',
+  'preview.openInDrive': 'Open in Drive',
+  'preview.loading': 'Loading…',
+  'saveFilter.cta': 'Save as filter',
+  'saveFilter.namePlaceholder': 'Filter name',
+  'sidebar.unsavedChanges': 'Unsaved changes',
+  'sidebar.saving': 'Saving…',
+  'sidebar.saved': 'Saved',
+  'sidebar.saveFailed': 'Save failed',
+  'sidebar.filtersHeading': 'Filters',
+  'sidebar.showAsColumn': 'Show {name} as a column',
+  'sidebar.deleteFilter': 'Delete {name}',
+  'sidebar.showCompleted': 'Show completed',
+  'sidebar.projectsHeading': 'Projects',
+  'sidebar.contextsHeading': 'Contexts',
+  'sidebar.archiveCompleted': 'Archive completed',
+  'sidebar.stats': 'Stats',
+  'sidebar.columns': 'Columns',
+  'sidebar.gantt': 'Gantt',
+  'sidebar.switchLocale': 'Switch language',
+  'view.all': 'All',
+  'view.overdue': 'Overdue',
+  'view.today': 'Today',
+  'view.upcoming': 'Upcoming',
+  'stats.streakHeading': 'Streak',
+  'stats.noStreak': 'No streak running',
+  'stats.streakDays.one': '{count} day running',
+  'stats.streakDays.other': '{count} days running',
+  'stats.completedPerDay': 'Completed per day',
+  'stats.completedPerWeek': 'Completed per week',
+  'stats.loadingHistory': 'Loading history…',
+  'task.waitingOn': 'Waiting on {title}',
+  'task.empty': 'Nothing here.',
+  'taskModal.aria': 'Task',
+  'taskModal.noDate': 'No date',
+  'taskModal.deadlineHeading': 'Deadline',
+  'taskModal.noDeadline': 'No deadline',
+  'taskModal.addLabelAria': 'Add label',
+  'taskModal.removeLabelAria': 'Remove {label}',
+  'taskModal.dependsOnHeading': 'Depends on',
+  'taskModal.clearDependencyAria': 'Clear dependency',
+  'signin.intro': 'Todoom keeps your tasks in a todo.txt file in your Google Drive.',
+  'signin.connect': 'Connect to Drive',
+  'signin.gone': 'That file is gone from Drive. Reload to create a new todo.txt.',
+  'signin.reload': 'Reload',
+} as const
+
+export type Key = keyof typeof en
+
+const ptBR: Record<Key, string> = {
+  'common.description': 'Descrição',
+  'common.attachments': 'Anexos',
+  'common.priority': 'Prioridade',
+  'common.labels': 'Etiquetas',
+  'common.none': 'Nenhuma',
+  'common.cancel': 'Cancelar',
+  'common.retry': 'Tentar de novo',
+  'common.close': 'Fechar',
+  'common.search': 'Buscar',
+  'common.searchPlaceholder': 'Buscar ou filtrar…',
+  'common.dismiss': 'Dispensar',
+  'common.remove': 'Remover',
+  'common.save': 'Salvar',
+  'common.delete': 'Excluir',
+  'addTask.aria': 'Adicionar tarefa',
+  'addTask.textPlaceholder': 'Ligar pro encanador +casa @telefone',
+  'addTask.attachChip': 'Anexar',
+  'addTask.openButton': '+ Adicionar tarefa',
+  'askFilter.aria': 'Descrever um filtro',
+  'askFilter.placeholder': 'Descreva um filtro…',
+  'askFilter.downloading': 'Baixando modelo… {percent}%',
+  'askFilter.thinking': 'Pensando…',
+  'attachments.trashConfirm': 'Mover {name} para a lixeira do Drive?',
+  'attachments.empty': 'Nenhum arquivo ainda.',
+  'attachments.addFile': 'Adicionar arquivo',
+  'attachments.workingAria': 'Processando',
+  'columns.empty': 'Marque um filtro salvo na barra lateral pra mostrar aqui.',
+  'date.fieldLabel': 'Data',
+  'date.previousMonth': 'Mês anterior',
+  'date.nextMonth': 'Próximo mês',
+  'date.clear': 'Limpar',
+  'date.repeat.daily': 'Diariamente',
+  'date.repeat.weekly': 'Semanalmente',
+  'date.repeat.monthly': 'Mensalmente',
+  'date.repeat.yearly': 'Anualmente',
+  'date.today': 'Hoje',
+  'date.tomorrow': 'Amanhã',
+  'quick.weekend': 'Este fim de semana',
+  'quick.nextWeek': 'Semana que vem',
+  'deps.searchPlaceholder': 'Buscar uma tarefa',
+  'deps.empty': 'Nenhuma tarefa aberta pra esperar.',
+  'gantt.empty': 'Dê uma data ou prazo a uma tarefa pra ela aparecer aqui.',
+  'labels.emptyHint': 'Nenhuma etiqueta ainda. Digite +projeto ou @contexto.',
+  'labels.typePlaceholder': 'Digite uma etiqueta',
+  'preview.openInDrive': 'Abrir no Drive',
+  'preview.loading': 'Carregando…',
+  'saveFilter.cta': 'Salvar como filtro',
+  'saveFilter.namePlaceholder': 'Nome do filtro',
+  'sidebar.unsavedChanges': 'Alterações não salvas',
+  'sidebar.saving': 'Salvando…',
+  'sidebar.saved': 'Salvo',
+  'sidebar.saveFailed': 'Falha ao salvar',
+  'sidebar.filtersHeading': 'Filtros',
+  'sidebar.showAsColumn': 'Mostrar {name} como coluna',
+  'sidebar.deleteFilter': 'Excluir {name}',
+  'sidebar.showCompleted': 'Mostrar concluídas',
+  'sidebar.projectsHeading': 'Projetos',
+  'sidebar.contextsHeading': 'Contextos',
+  'sidebar.archiveCompleted': 'Arquivar concluídas',
+  'sidebar.stats': 'Estatísticas',
+  'sidebar.columns': 'Colunas',
+  'sidebar.gantt': 'Gantt',
+  'sidebar.switchLocale': 'Trocar idioma',
+  'view.all': 'Todas',
+  'view.overdue': 'Atrasadas',
+  'view.today': 'Hoje',
+  'view.upcoming': 'Em breve',
+  'stats.streakHeading': 'Sequência',
+  'stats.noStreak': 'Nenhuma sequência ativa',
+  'stats.streakDays.one': '{count} dia seguido',
+  'stats.streakDays.other': '{count} dias seguidos',
+  'stats.completedPerDay': 'Concluídas por dia',
+  'stats.completedPerWeek': 'Concluídas por semana',
+  'stats.loadingHistory': 'Carregando histórico…',
+  'task.waitingOn': 'Esperando {title}',
+  'task.empty': 'Nada por aqui.',
+  'taskModal.aria': 'Tarefa',
+  'taskModal.noDate': 'Sem data',
+  'taskModal.deadlineHeading': 'Prazo',
+  'taskModal.noDeadline': 'Sem prazo',
+  'taskModal.addLabelAria': 'Adicionar etiqueta',
+  'taskModal.removeLabelAria': 'Remover {label}',
+  'taskModal.dependsOnHeading': 'Depende de',
+  'taskModal.clearDependencyAria': 'Limpar dependência',
+  'signin.intro': 'O Todoom guarda suas tarefas em um arquivo todo.txt no seu Google Drive.',
+  'signin.connect': 'Conectar ao Drive',
+  'signin.gone': 'Esse arquivo sumiu do Drive. Recarregue pra criar um novo todo.txt.',
+  'signin.reload': 'Recarregar',
+}
+
+export const STRINGS: Record<Locale, Record<Key, string>> = { en, 'pt-BR': ptBR }
+
+export function t(locale: Locale, key: Key, params: Record<string, string | number> = {}): string {
+  return STRINGS[locale][key].replace(/\{(\w+)\}/g, (match, name: string) => {
+    const value = params[name]
+    return value === undefined ? match : String(value)
+  })
+}
+
+/** Which of a `.one` / `.other` key pair fits the count in this locale. */
+export function pluralOf(locale: Locale, count: number): 'one' | 'other' {
+  return new Intl.PluralRules(locale).select(count) === 'one' ? 'one' : 'other'
+}

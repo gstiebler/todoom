@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { DriveEntry } from '../drive/store'
+import { useLocale } from './locale'
 
 export function isPreviewable(entry: DriveEntry): boolean {
   return entry.mimeType.startsWith('image/') || entry.mimeType === 'application/pdf'
@@ -12,6 +13,7 @@ function previewUrl(id: string): string {
 }
 
 export function PreviewModal({ entry, onClose }: { entry: DriveEntry; onClose: () => void }) {
+  const { t } = useLocale()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -47,13 +49,18 @@ export function PreviewModal({ entry, onClose }: { entry: DriveEntry; onClose: (
             target="_blank"
             rel="noopener noreferrer"
           >
-            Open in Drive
+            {t('preview.openInDrive')}
           </a>
-          <button className="preview__close" type="button" aria-label="Close" onClick={onClose}>
+          <button
+            className="preview__close"
+            type="button"
+            aria-label={t('common.close')}
+            onClick={onClose}
+          >
             ×
           </button>
         </div>
-        {loading && <p className="preview__loading">Loading…</p>}
+        {loading && <p className="preview__loading">{t('preview.loading')}</p>}
         <iframe
           className="preview__frame"
           src={previewUrl(entry.id)}

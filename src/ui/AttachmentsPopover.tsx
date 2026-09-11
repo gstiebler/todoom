@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PendingAttachment, TodoomApp } from '../app/state'
 import type { DriveEntry } from '../drive/store'
 import { isPreviewable, PreviewModal } from './PreviewModal'
+import { useLocale } from './locale'
 
 /**
  * The files hanging off one task. A file the folder no longer holds still
@@ -17,23 +18,27 @@ export const AttachmentList = observer(function AttachmentList({
   index: number
   ids: string[]
 }) {
+  const { t } = useLocale()
   const picker = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<DriveEntry | null>(null)
   const closePreview = useCallback(() => setPreview(null), [])
   const taskId = app.state.tasks[index]?.pairs['id'] ?? ''
   const pending = app.pendingFor(index)
   const uploads = pending.filter((entry) => entry.kind === 'upload')
-  const removing = (id: string) => pending.find((entry) => entry.kind === 'remove' && entry.key === id)
+  const removing = (id: string) =>
+    pending.find((entry) => entry.kind === 'remove' && entry.key === id)
   const uploading = uploads.some((entry) => entry.error === null)
 
   const detach = (id: string, name: string) => {
-    if (!confirm(`Move ${name} to the Drive trash?`)) return
+    if (!confirm(t('attachments.trashConfirm', { name }))) return
     void app.detachFile(index, id)
   }
 
   return (
     <>
-      {ids.length === 0 && uploads.length === 0 && <p className="popover__empty">No files yet.</p>}
+      {ids.length === 0 && uploads.length === 0 && (
+        <p className="popover__empty">{t('attachments.empty')}</p>
+      )}
       <ul className="attachment-list">
         {ids.map((id) => {
           const entry = app.attachmentsById.get(id)
@@ -64,7 +69,7 @@ export const AttachmentList = observer(function AttachmentList({
               <button
                 className="attachment__remove"
                 type="button"
-                title={state?.error ? 'Dismiss' : 'Remove'}
+                title={state?.error ? t('common.dismiss') : t('common.remove')}
                 disabled={state !== undefined && state.error === null}
                 onClick={() =>
                   state?.error ? app.dismissAttachment(taskId, id) : detach(id, entry?.name ?? id)
@@ -83,7 +88,7 @@ export const AttachmentList = observer(function AttachmentList({
               <button
                 className="attachment__remove"
                 type="button"
-                title="Dismiss"
+                title={t('common.dismiss')}
                 onClick={() => app.dismissAttachment(taskId, entry.key)}
               >
                 ×
@@ -99,7 +104,7 @@ export const AttachmentList = observer(function AttachmentList({
           disabled={uploading}
           onClick={() => picker.current?.click()}
         >
-          Add file
+          {t('attachments.addFile')}
         </button>
       </div>
       <input
@@ -134,7 +139,10 @@ const PendingMark = observer(function PendingMark({
   taskId: string
   entry: PendingAttachment
 }) {
-  if (entry.error === null) return <span className="spinner" role="status" aria-label="Working" />
+  const { t } = useLocale()
+  if (entry.error === null) {
+    return <span className="spinner" role="status" aria-label={t('attachments.workingAria')} />
+  }
   return (
     <>
       <span className="attachment__error">{entry.error}</span>
@@ -143,7 +151,7 @@ const PendingMark = observer(function PendingMark({
         type="button"
         onClick={() => void app.retryAttachment(taskId, entry.key)}
       >
-        Retry
+        {t('common.retry')}
       </button>
     </>
   )

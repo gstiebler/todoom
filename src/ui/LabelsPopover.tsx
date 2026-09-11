@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocale } from './locale'
 
 export function LabelsPopover({
   available,
@@ -9,6 +10,7 @@ export function LabelsPopover({
   selected: string[]
   onToggle: (label: string) => void
 }) {
+  const { t } = useLocale()
   const [query, setQuery] = useState('')
   const matches = available.filter((label) => label.toLowerCase().includes(query.toLowerCase()))
 
@@ -16,7 +18,7 @@ export function LabelsPopover({
     <div className="popover popover--labels">
       <input
         className="popover__search"
-        placeholder="Type a label"
+        placeholder={t('labels.typePlaceholder')}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => {
@@ -25,7 +27,7 @@ export function LabelsPopover({
         }}
       />
       {matches.length === 0 ? (
-        <p className="popover__empty">No labels yet. Type +project or @context instead.</p>
+        <p className="popover__empty">{t('labels.emptyHint')}</p>
       ) : (
         <ul className="label-list">
           {matches.map((label) => (

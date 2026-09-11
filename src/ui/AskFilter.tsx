@@ -1,9 +1,11 @@
 import { observer } from 'mobx-react-lite'
 import { useState } from 'react'
 import type { TodoomApp } from '../app/state'
+import { useLocale } from './locale'
 
 /** A ✦ button that turns into a description box; the model's query lands in the search. */
 export const AskFilter = observer(function AskFilter({ app }: { app: TodoomApp }) {
+  const { t } = useLocale()
   const [text, setText] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -13,7 +15,11 @@ export const AskFilter = observer(function AskFilter({ app }: { app: TodoomApp }
 
   if (text === null) {
     return (
-      <button className="ask-filter" aria-label="Describe a filter" onClick={() => setText('')}>
+      <button
+        className="ask-filter"
+        aria-label={t('askFilter.aria')}
+        onClick={() => setText('')}
+      >
         ✦
       </button>
     )
@@ -41,7 +47,9 @@ export const AskFilter = observer(function AskFilter({ app }: { app: TodoomApp }
   }
 
   const status =
-    modelProgress !== null ? `Downloading model… ${Math.round(modelProgress * 100)}%` : 'Thinking…'
+    modelProgress !== null
+      ? t('askFilter.downloading', { percent: Math.round(modelProgress * 100) })
+      : t('askFilter.thinking')
 
   return (
     <form
@@ -55,7 +63,7 @@ export const AskFilter = observer(function AskFilter({ app }: { app: TodoomApp }
         className="ask-filter__text"
         autoFocus
         disabled={pending}
-        placeholder="Describe a filter…"
+        placeholder={t('askFilter.placeholder')}
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {

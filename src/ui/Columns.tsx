@@ -4,6 +4,7 @@ import type { SavedFilter } from '../core/filters'
 import type { Task } from '../core/types'
 import { emptyFilter, filterTasks, sortTasks } from '../core/query'
 import { TaskRow } from './TaskList'
+import { useLocale } from './locale'
 
 const Column = observer(function Column({
   app,
@@ -51,9 +52,10 @@ export const Columns = observer(function Columns({
   app: TodoomApp
   today: string
 }) {
+  const { t } = useLocale()
   const filters = app.columnFilters
   if (filters.length === 0) {
-    return <p className="columns__empty">Tick a saved filter in the sidebar to show it here.</p>
+    return <p className="columns__empty">{t('columns.empty')}</p>
   }
   return (
     <div className="columns">

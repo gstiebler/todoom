@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import type { TodoomApp } from '../app/state'
+import { useLocale } from './locale'
 
 /** A button that turns into a name box; saving keeps the query in the search. */
 export function SaveFilter({ app, query }: { app: TodoomApp; query: string }) {
+  const { t } = useLocale()
   const [name, setName] = useState<string | null>(null)
 
   if (name === null) {
     return (
       <button className="save-filter" onClick={() => setName('')}>
-        Save as filter
+        {t('saveFilter.cta')}
       </button>
     )
   }
@@ -33,7 +35,7 @@ export function SaveFilter({ app, query }: { app: TodoomApp; query: string }) {
       <input
         className="save-filter__name"
         autoFocus
-        placeholder="Filter name"
+        placeholder={t('saveFilter.namePlaceholder')}
         value={name}
         onChange={(event) => setName(event.target.value)}
         onKeyDown={(event) => {
@@ -41,10 +43,10 @@ export function SaveFilter({ app, query }: { app: TodoomApp; query: string }) {
         }}
       />
       <button type="submit" disabled={invalid}>
-        Save
+        {t('common.save')}
       </button>
       <button type="button" onClick={() => setName(null)}>
-        Cancel
+        {t('common.cancel')}
       </button>
     </form>
   )

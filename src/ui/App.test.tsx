@@ -1062,4 +1062,11 @@ describe('locale', () => {
     expect(document.documentElement.lang).toBe('pt-BR')
     expect(localStorage.getItem('todoom.locale')).toBe('pt-BR')
   })
+
+  it('translates the task list and the add button', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('pt-BR')
+    const { root } = await mount('')
+    expect(root.querySelector('.empty')?.textContent).toBe('Nada por aqui.')
+    expect(root.querySelector('.add-task')?.textContent).toBe('+ Adicionar tarefa')
+  })
 })

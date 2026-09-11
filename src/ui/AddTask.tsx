@@ -5,6 +5,7 @@ import { collectContexts, collectProjects } from '../core/query'
 import { composeLine, emptyDraft } from './composeLine'
 import { DatePopover } from './DatePopover'
 import { LabelsPopover } from './LabelsPopover'
+import { useLocale } from './locale'
 
 const PRIORITIES = ['A', 'B', 'C', 'D']
 
@@ -19,6 +20,7 @@ const AddTaskModal = observer(function AddTaskModal({
   today: string
   onClose: () => void
 }) {
+  const { t } = useLocale()
   // The draft lives here and the modal is unmounted when closed, so every open
   // starts clean without an explicit reset.
   const [draft, setDraft] = useState(emptyDraft())
@@ -50,7 +52,7 @@ const AddTaskModal = observer(function AddTaskModal({
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Add task"
+        aria-label={t('addTask.aria')}
         onClick={(event) => event.stopPropagation()}
         onSubmit={(event) => {
           event.preventDefault()
@@ -67,14 +69,14 @@ const AddTaskModal = observer(function AddTaskModal({
         <input
           className="add-input"
           autoFocus
-          placeholder="Call plumber +house @phone"
+          placeholder={t('addTask.textPlaceholder')}
           value={draft.text}
           onChange={(event) => setDraft({ ...draft, text: event.target.value })}
         />
 
         <input
           className="add-description"
-          placeholder="Description"
+          placeholder={t('common.description')}
           value={draft.note}
           onChange={(event) => setDraft({ ...draft, note: event.target.value })}
         />
@@ -85,7 +87,7 @@ const AddTaskModal = observer(function AddTaskModal({
             className={draft.due ? 'modal-chip modal-chip--set' : 'modal-chip'}
             onClick={() => toggle('date')}
           >
-            {draft.due ?? 'Date'}
+            {draft.due ?? t('date.fieldLabel')}
             {draft.rec && ` · ${draft.rec}`}
           </button>
           <button
@@ -93,14 +95,14 @@ const AddTaskModal = observer(function AddTaskModal({
             className={draft.priority ? 'modal-chip modal-chip--set' : 'modal-chip'}
             onClick={() => toggle('priority')}
           >
-            {draft.priority ? `(${draft.priority})` : 'Priority'}
+            {draft.priority ? `(${draft.priority})` : t('common.priority')}
           </button>
           <button
             type="button"
             className={draft.labels.length > 0 ? 'modal-chip modal-chip--set' : 'modal-chip'}
             onClick={() => toggle('labels')}
           >
-            {draft.labels.length > 0 ? draft.labels.join(' ') : 'Labels'}
+            {draft.labels.length > 0 ? draft.labels.join(' ') : t('common.labels')}
           </button>
 
           <button
@@ -108,7 +110,7 @@ const AddTaskModal = observer(function AddTaskModal({
             className={files.length > 0 ? 'modal-chip modal-chip--set' : 'modal-chip'}
             onClick={() => picker.current?.click()}
           >
-            {files.length > 0 ? files.map((file) => file.name).join(' ') : 'Attach'}
+            {files.length > 0 ? files.map((file) => file.name).join(' ') : t('addTask.attachChip')}
           </button>
           <input
             className="attach-picker"
@@ -123,12 +125,17 @@ const AddTaskModal = observer(function AddTaskModal({
           />
 
           <div className="modal-actions">
-            <button type="button" className="modal-cancel" aria-label="Cancel" onClick={onClose}>
+            <button
+              type="button"
+              className="modal-cancel"
+              aria-label={t('common.cancel')}
+              onClick={onClose}
+            >
               ×
             </button>
             <button
               className="modal-submit"
-              aria-label="Add task"
+              aria-label={t('addTask.aria')}
               disabled={uploading || draft.text.trim() === ''}
             >
               {uploading ? '…' : '↑'}
@@ -192,12 +199,13 @@ export const AddTask = observer(function AddTask({
   app: TodoomApp
   today: string
 }) {
+  const { t } = useLocale()
   const [open, setOpen] = useState(false)
 
   return (
     <>
       <button className="add-task" onClick={() => setOpen(true)}>
-        + Add task
+        {t('addTask.openButton')}
       </button>
       {open && <AddTaskModal app={app} today={today} onClose={() => setOpen(false)} />}
     </>

@@ -28,7 +28,7 @@ export const TaskRow = observer(function TaskRow({
   task: Task
   today: string
 }) {
-  const { locale } = useLocale()
+  const { locale, t } = useLocale()
   const [open, setOpen] = useState(false)
   const [attachOpen, setAttachOpen] = useState(false)
   const index = app.indexOf(task)
@@ -53,9 +53,17 @@ export const TaskRow = observer(function TaskRow({
 
         {task.note && <p className="task__note">{task.note}</p>}
 
-        {blocker && <p className="task__blocked">Waiting on {taskTitle(blocker)}</p>}
+        {blocker && (
+          <p className="task__blocked">
+            {t('task.waitingOn', { title: taskTitle(blocker) })}
+          </p>
+        )}
 
-        {(dueLabel || deadlineLabel || rec || task.projects.length > 0 || task.contexts.length > 0) && (
+        {(dueLabel ||
+          deadlineLabel ||
+          rec ||
+          task.projects.length > 0 ||
+          task.contexts.length > 0) && (
           <div className="task__meta">
             {dueLabel && (
               <span className="task__due">
@@ -88,14 +96,18 @@ export const TaskRow = observer(function TaskRow({
 
       <button
         className="task__attach"
-        title="Attachments"
+        title={t('common.attachments')}
         onClick={() => setAttachOpen((open) => !open)}
       >
         <PaperclipIcon />
         {task.attachments.length > 0 && task.attachments.length}
       </button>
 
-      <button className="task__delete" title="Delete" onClick={() => app.deleteTask(index)}>
+      <button
+        className="task__delete"
+        title={t('common.delete')}
+        onClick={() => app.deleteTask(index)}
+      >
         ×
       </button>
 
@@ -120,8 +132,9 @@ export const TaskList = observer(function TaskList({
   app: TodoomApp
   today: string
 }) {
+  const { t } = useLocale()
   const visible = app.visibleTasks()
-  if (visible.length === 0) return <p className="empty">Nothing here.</p>
+  if (visible.length === 0) return <p className="empty">{t('task.empty')}</p>
 
   return (
     <ul className="task-list">

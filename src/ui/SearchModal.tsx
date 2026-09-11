@@ -18,7 +18,7 @@ export const SearchModal = observer(function SearchModal({
   onClose: () => void
   onPick: (index: number) => void
 }) {
-  const { locale } = useLocale()
+  const { locale, t } = useLocale()
   const input = useRef<HTMLInputElement>(null)
   // The query the modal opened with, so Escape can put it back.
   const initial = useRef(app.state.filter.search)
@@ -51,13 +51,13 @@ export const SearchModal = observer(function SearchModal({
         className="modal search-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Search"
+        aria-label={t('common.search')}
         onClick={(event) => event.stopPropagation()}
       >
         <input
           ref={input}
           className="search-modal__input"
-          placeholder="Search or filter…"
+          placeholder={t('common.searchPlaceholder')}
           autoFocus
           value={app.state.filter.search}
           onChange={(event) => app.setFilter({ search: event.target.value })}

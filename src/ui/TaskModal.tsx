@@ -30,7 +30,7 @@ export const TaskModal = observer(function TaskModal({
   today: string
   onClose: () => void
 }) {
-  const { locale } = useLocale()
+  const { locale, t } = useLocale()
   const [field, setField] = useState<Field>(null)
   // The two text fields are edited locally and written back on blur, so a task
   // is not reparsed on every keystroke.
@@ -70,11 +70,15 @@ export const TaskModal = observer(function TaskModal({
         className="task-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Task"
+        aria-label={t('taskModal.aria')}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="task-modal__bar">
-          <button className="task-modal__close" aria-label="Close" onClick={onClose}>
+          <button
+            className="task-modal__close"
+            aria-label={t('common.close')}
+            onClick={onClose}
+          >
             ×
           </button>
         </div>
@@ -100,7 +104,7 @@ export const TaskModal = observer(function TaskModal({
               />
               <input
                 className="task-modal__note"
-                placeholder="Description"
+                placeholder={t('common.description')}
                 value={note}
                 onChange={(event) => setNoteDraft(event.target.value)}
                 onBlur={() => change((current) => setNote(current, note))}
@@ -110,7 +114,7 @@ export const TaskModal = observer(function TaskModal({
               />
 
               <section className="task-modal__files">
-                <h3 className="field__label">Attachments</h3>
+                <h3 className="field__label">{t('common.attachments')}</h3>
                 <AttachmentList app={app} index={index} ids={task.attachments} />
               </section>
             </div>
@@ -118,10 +122,10 @@ export const TaskModal = observer(function TaskModal({
 
           <aside className="task-modal__side">
             <section className="field field--date">
-              <h3 className="field__label">Date</h3>
+              <h3 className="field__label">{t('date.fieldLabel')}</h3>
               <button className="field__value" onClick={() => toggle('date')}>
                 <CalendarIcon />
-                {dueLabel || 'No date'}
+                {dueLabel || t('taskModal.noDate')}
                 {rec && <RepeatIcon />}
               </button>
               {field === 'date' && (
@@ -136,13 +140,13 @@ export const TaskModal = observer(function TaskModal({
             </section>
 
             <section className="field field--deadline">
-              <h3 className="field__label">Deadline</h3>
+              <h3 className="field__label">{t('taskModal.deadlineHeading')}</h3>
               <button
                 className={`field__value ${deadlineClass}`.trim()}
                 onClick={() => toggle('deadline')}
               >
                 <FlagIcon />
-                {deadlineLabel || 'No deadline'}
+                {deadlineLabel || t('taskModal.noDeadline')}
               </button>
               {field === 'deadline' && (
                 <DatePopover
@@ -157,16 +161,18 @@ export const TaskModal = observer(function TaskModal({
             </section>
 
             <section className="field field--priority">
-              <h3 className="field__label">Priority</h3>
+              <h3 className="field__label">{t('common.priority')}</h3>
               <button className="field__value" onClick={() => toggle('priority')}>
-                {task.priority ? `(${task.priority})` : 'None'}
+                {task.priority ? `(${task.priority})` : t('common.none')}
               </button>
               {field === 'priority' && (
                 <div className="popover popover--priority">
                   {PRIORITIES.map((priority) => (
                     <button
                       key={priority}
-                      className={task.priority === priority ? 'priority priority--active' : 'priority'}
+                      className={
+                        task.priority === priority ? 'priority priority--active' : 'priority'
+                      }
                       onClick={() =>
                         change((current) =>
                           setPriority(current, current.priority === priority ? null : priority),
@@ -182,10 +188,10 @@ export const TaskModal = observer(function TaskModal({
 
             <section className="field field--labels">
               <div className="field__head">
-                <h3 className="field__label">Labels</h3>
+                <h3 className="field__label">{t('common.labels')}</h3>
                 <button
                   className="field__value field__add"
-                  aria-label="Add label"
+                  aria-label={t('taskModal.addLabelAria')}
                   onClick={() => toggle('labels')}
                 >
                   +
@@ -193,12 +199,15 @@ export const TaskModal = observer(function TaskModal({
               </div>
               <div className="field__labels">
                 {labels.map((label) => (
-                  <span className={`tag tag--${label.startsWith('+') ? 'project' : 'context'}`} key={label}>
+                  <span
+                    className={`tag tag--${label.startsWith('+') ? 'project' : 'context'}`}
+                    key={label}
+                  >
                     <TagIcon />
                     {label}
                     <button
                       className="tag__remove"
-                      aria-label={`Remove ${label}`}
+                      aria-label={t('taskModal.removeLabelAria', { label })}
                       onClick={() => change((current) => toggleLabel(current, label))}
                     >
                       ×
@@ -216,14 +225,14 @@ export const TaskModal = observer(function TaskModal({
             </section>
 
             <section className="field field--deps">
-              <h3 className="field__label">Depends on</h3>
+              <h3 className="field__label">{t('taskModal.dependsOnHeading')}</h3>
               <button className="field__value" onClick={() => toggle('deps')}>
-                {blocker ? taskTitle(blocker) : 'None'}
+                {blocker ? taskTitle(blocker) : t('common.none')}
               </button>
               {blocker && (
                 <button
                   className="field__clear"
-                  aria-label="Clear dependency"
+                  aria-label={t('taskModal.clearDependencyAria')}
                   onClick={() => app.setDependency(index, null)}
                 >
                   ×

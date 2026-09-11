@@ -138,3 +138,15 @@ test('describes a filter and gets a query in the search box', async ({ page }) =
   await expect(page.locator('.task')).toHaveCount(1)
   await expect(page.locator('.save-filter')).toBeVisible()
 })
+
+test('shows a saved filter as a column', async ({ page }) => {
+  await page.goto(PAGE)
+  await page.fill('.search', '+house')
+  await page.click('.save-filter')
+  await page.fill('.save-filter__name', 'House')
+  await page.keyboard.press('Enter')
+  await page.click('[aria-label="Show House as a column"]')
+  await page.locator('.view-btn', { hasText: 'Columns' }).click()
+  await expect(page.locator('.column')).toHaveCount(1)
+  await expect(page.locator('.column .task')).toHaveCount(1)
+})
